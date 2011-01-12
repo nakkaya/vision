@@ -51,14 +51,18 @@
   (defn image-size [p]
     (let [ref (.invoke (function "image_size") com.sun.jna.ptr.IntByReference (to-array [p]))
           pointer (.getPointer ref)
-          [width height] (.getIntArray pointer 0 2)]
-      [width height]))
+          info (seq (.getIntArray pointer 0 2))]
+      (release-memory ref)
+      info))
   
   (defn pixels [p]
     (let [ref (.invoke (function "pixels") com.sun.jna.ptr.IntByReference (to-array [p]))
           pointer (.getPointer ref)
-          [width height] (image-size p)]
-      (.getIntArray pointer 0 (* width height))))
+          [width height] (image-size p)
+          pxs (.getIntArray pointer 0 (* width height))]
+      (release-memory ref)
+      pxs))
+  
 #+end_src
 
 Display video from webcam,
@@ -80,9 +84,8 @@ Display video from webcam,
       
       (future
        (while (:loop @state)
-         (time (dosync (alter state assoc :img (image (query-frame capture)))))
-         (.repaint frame)
-         (Thread/sleep 50))
+         (dosync (alter state assoc :img (image (query-frame capture))))
+         (.repaint frame))
        (release-capture capture)
        (.setVisible frame false))
       
@@ -328,6 +331,10 @@ Identify Robocup identification numbers,
     cvSaveImage( file, (IplImage*)image, NULL);
   }
   
+  void release_memory(void* p){
+    free(p);
+  }
+  
   <<native-lib-isolate-hsv>>
   <<native-lib-circle>>
   <<native-lib-bounding-box>>
@@ -354,7 +361,10 @@ Identify Robocup identification numbers,
     
   (defn function [f]
    (Function/getFunction "vision" f))
-    
+  
+  (defn release-memory [p]
+    (.invoke (function "release_memory") (to-array [p])))
+  
   (defn capture-from-cam [n]
     (.invoke (function "capture_from_cam") Pointer (to-array [n])))
     
@@ -377,8 +387,10 @@ Identify Robocup identification numbers,
                          com.sun.jna.ptr.FloatByReference
                          (to-array [i h1 s1 v1 h2 s2 v2 min-r max-r min-d]))]
       (let [pointer (.getPointer ref)
-            count (.getFloat pointer 0)]
-        (partition 3 (seq (drop 1 (.getFloatArray pointer 0 (inc (* 3 count)))))))
+            count (.getFloat pointer 0)
+            circles (partition 3 (seq (drop 1 (.getFloatArray pointer 0 (inc (* 3 count))))))]
+        (release-memory ref)
+        circles)
       []))
   
   <<clojure-vision-rgb-array-to-bufferedimage>>
