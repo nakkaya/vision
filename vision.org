@@ -66,29 +66,26 @@ Display video from webcam,
 #+begin_src clojure :eval query :tangle no
   (ns display-webcam
     (:use [vision core graphics])
-    (:import (javax.swing JFrame Timer)
+    (:import (javax.swing JFrame)
              (java.awt.event ActionListener KeyListener)))
-  
-  (defn frame [state]
-    (proxy [JFrame KeyListener] [] 
-        (paint
-         [g]
-         (.drawImage g (:img @state) 0 0 nil))
-        (keyPressed [e])
-        (keyReleased [e])
-        (keyTyped [e]
-                  (dosync (alter state assoc :loop false))
-                  (.setVisible this false))))
   
   (defn display []
     (let [capture (capture-from-cam 0)
           state (ref {:loop true :img (image (query-frame capture))})
-          frame (frame state)]
+          frame (proxy [JFrame KeyListener] [] 
+                  (paint [g] (.drawImage g (:img @state) 0 0 nil))
+                  (keyPressed [e])
+                  (keyReleased [e])
+                  (keyTyped [e] (dosync (alter state assoc :loop false))))]
+      
       (future
        (while (:loop @state)
-         (dosync (alter state assoc :img (image (query-frame capture))))
-         (.repaint frame))
-       (release-capture capture))
+         (time (dosync (alter state assoc :img (image (query-frame capture)))))
+         (.repaint frame)
+         (Thread/sleep 50))
+       (release-capture capture)
+       (.setVisible frame false))
+      
       (doto frame
         (.addKeyListener frame)
         (.setSize 640 480)
