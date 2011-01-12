@@ -1,0 +1,527 @@
+#+TITLE: Vision
+#+AUTHOR: Nurullah Akkaya
+#+STARTUP: hidestars
+#+TAGS: NOEXPORT(e)
+#+EXPORT_EXCLUDE_TAGS: NOEXPORT
+#+LaTeX_CLASS: literate-code
+
+* Isolate HSV Range
+
+Isolate a given HSV range. Matches will be white rest will be black.
+
+#+srcname: native-lib-isolate-hsv
+#+begin_src c :eval never :tangle no
+  void* isolate_hsv_range(void* image, 
+                          int h1, int s1, int v1, 
+                          int h2, int s2, int v2){
+    // Convert the image into an HSV image
+    IplImage* imgHSV = cvCreateImage(cvGetSize((IplImage*)image), 8, 3);
+  
+    cvCvtColor(image, imgHSV, CV_BGR2HSV);
+  
+    IplImage* imgThreshed = cvCreateImage(cvGetSize((IplImage*)image), 8, 1);
+  
+    cvInRangeS(imgHSV, cvScalar(h1, s1, v1, 0), cvScalar(h2, s2, v2, 0), imgThreshed);
+  
+    cvSmooth( imgThreshed, imgThreshed, CV_GAUSSIAN, 9, 9 , 0 , 0);
+  
+    cvReleaseImage(&imgHSV);
+  
+    return (void*)imgThreshed;
+  }
+  
+#+end_src
+
+* Detecting circles
+
+Detect circles in the image that is in the given HSV range.
+
+#+srcname: native-lib-circle
+#+begin_src c :eval never :tangle no
+  float* circles(void* image, 
+                 int h1, int s1, int v1, 
+                 int h2, int s2, int v2,
+                 int min_r, int max_r, int min_d){
+    IplImage* threshed = isolate_hsv_range((IplImage*)image, h1, s1, v1, h2, s2, v2);
+  
+    CvMemStorage* storage = cvCreateMemStorage(0);
+    cvClearMemStorage(storage);
+  
+    CvSeq* circles = cvHoughCircles(threshed, storage, CV_HOUGH_GRADIENT, 2, 
+                                    min_d, 100, 40, min_r, max_r);
+    cvReleaseImage(&threshed);
+  
+    if(circles->total == 0)
+      return NULL;
+  
+    float* coords = malloc((1 + 3 * circles->total) * sizeof(float));
+    coords[0] = (float)circles->total;
+  
+    int i,k;
+    for(i=0, k=1; i<circles->total; i++, k+=3){
+      float* p = (float*)cvGetSeqElem(circles, i);
+      
+      coords[k] = p[0];
+      coords[k+1] = p[1];
+      coords[k+2] = p[2];
+  
+    }
+  
+    return coords;
+  }
+  
+#+end_src
+
+Example C code to find yellow circles in an image,
+
+#+srcname: c-example-circle-detect
+#+begin_src c :eval never :tangle no
+      float* list = circles(image, 
+                            20,100,100,
+                            30,255,255, 
+                            20, 200, 100);
+  
+      if(list != NULL){
+        int i;
+        for (i = 1; i < list[0]+1; i+=3){
+          float x = list[i];
+          float y = list[i+1];
+          float r = list[i+2];
+          printf("Circle at %f %f with R %f \n", x,y,r);
+          cvCircle(image, cvPoint(cvRound(x),cvRound(y)), 3, CV_RGB(0,255,0), -1, 8, 0 );
+          cvCircle(image, cvPoint(cvRound(x),cvRound(y)), cvRound(r), CV_RGB(255,0,0), 3, 8, 0 );
+        }
+        free(list);
+      }
+#+end_src
+
+Above code in Clojure,
+
+#+begin_src clojure :eval query :tangle no
+  (ns find-yellow-circle
+    (:use vision.core))
+  
+  (let [capture (capture-from-cam 0)]
+    (future
+     (while true
+       (let [frame (query-frame capture)
+             circles (circles frame
+                              [20 100 100]
+                              [30 255 255]
+                              20 200 100)]
+         (println "->" circles)))))
+  
+#+end_src
+
+Identify Robocup identification numbers,
+
+#+begin_src clojure :eval query :tangle no
+  (ns robocup-id
+    (:refer-clojure :exclude [+ - * =])
+    (:use (clojure.contrib.generic [arithmetic :only [+ - *]]
+                                   [comparison :only [=]]))
+    (:use [vector-2d.core] :reload-all)
+    (:use [vision core graphics]))
+  
+  (def image-file "sample/robocup-marker.png")
+  
+  (defn in-range? [x [a b]]
+    (if (and (>= x a)
+             (<= x b))
+      true false))
+  
+  (defn id-10 [team pink]
+    (let [pink (map #(apply vector-2d (take 2 %)) pink)]
+      (reduce (fn[h v]
+                (let [self (apply vector-2d (take 2 v))
+                      [f s] (take 2 (sort-by #(dist self %) pink))]
+                  (if (and (in-range? (dist self f) [50 60])
+                           (in-range? (dist self s) [50 60])
+                           (= -2 (int (bearing self f)))
+                           (= 2 (int (bearing self s))))
+                    (take 2 v) h))) nil team)))
+  
+  (defn id-09 [team pink]
+    (let [pink (map #(apply vector-2d (take 2 %)) pink)]
+      (reduce (fn[h v]
+                (let [self (apply vector-2d (take 2 v))
+                      [f s] (take 2 (sort-by #(dist self %) pink))]
+                  (if (and (in-range? (dist self f) [50 60])
+                           (in-range? (dist self s) [50 60])
+                           (= -1 (int (bearing self f)))
+                           (= 1 (int (bearing self s))))
+                    (take 2 v) h))) nil team)))
+  
+  (let [frame (load-image image-file :color)
+        image (image image-file)
+        team  (circles frame [115 0 0] [125 255 255] 10 40 45)
+        pink (circles frame [145 0 0] [165 255 255] 10 30 35)]
+    
+    (doseq [c team]
+      (circle image c java.awt.Color/red))
+    
+    (doseq [c pink]
+      (circle image c java.awt.Color/yellow))
+    
+    (plus image (id-10 team pink) java.awt.Color/red)
+    (plus image (id-09 team pink) java.awt.Color/red)
+    
+    (view image))
+#+end_src
+
+* Finding bounding boxes
+#+srcname: native-lib-bounding-box
+#+begin_src c :eval never :tangle no
+  int* bounding_boxes(void* image, 
+                      int h1, int s1, int v1, 
+                      int h2, int s2, int v2){
+  
+    IplImage* threshed = isolate_hsv_range((IplImage*)image, h1, s1, v1, h2, s2, v2);
+  
+    CvSeq* boxes;
+    CvMemStorage* storage = cvCreateMemStorage(0);
+    cvClearMemStorage(storage);
+    
+    int total = cvFindContours(threshed, storage, &boxes, sizeof(CvContour), 
+                               CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
+  
+    cvReleaseImage(&threshed);
+  
+    if(total == 0)
+      return NULL;
+    
+    int* coords = malloc((1 + 4 * total) * sizeof(int));
+    coords[0] = total;
+    
+    int k = 1;
+    for(; boxes; boxes= boxes->h_next, k+=4){
+      CvRect b = cvBoundingRect(boxes, 1);
+        
+      coords[k] = b.x;
+      coords[k+1] = b.y;
+      coords[k+2] = b.width;
+      coords[k+3] = b.height;
+    }
+  
+    return coords;
+  }
+  
+#+end_src
+
+Example C code,
+
+#+srcname: c-example-bounding-box
+#+begin_src c :eval never :tangle no
+    int* list = bounding_boxes(image, 40,35,35, 50,200,200);
+  
+    if(list == NULL){
+      printf("Non Found...");
+      return 1;
+    }
+  
+    int i;
+    for (i = 1; i < ((list[0]+1) * 4); i+=4){
+      int x = list[i];
+      int y = list[i+1];
+      int width = list[i+2];
+      int height = list[i+3];
+      printf("Bounding box at %d %d \n", x,y);
+  
+      cvRectangle((IplImage*)image,
+                  cvPoint(x, y), cvPoint(x + width, y + height),
+                  CV_RGB(255, 0, 0), 1, 8, 0);
+    }
+#+end_src
+
+* Files                                                            :NOEXPORT:
+** Native
+*** cmake
+#+begin_src text :eval never :tangle native/CMakeLists.txt
+cmake_minimum_required(VERSION 2.8)
+project(vision)
+
+find_package (OpenCV REQUIRED)
+
+add_library(vision SHARED vision.c)
+target_link_libraries(vision cxcore cv highgui)
+
+add_executable(view view.c)
+target_link_libraries(view vision)
+
+add_executable(detect_yellow_circle detect_yellow_circle.c)
+target_link_libraries(detect_yellow_circle vision)
+
+add_executable(detect_bounding_box detect_bounding_box.c)
+target_link_libraries(detect_bounding_box vision)
+#+end_src
+ 
+*** vision.h
+#+begin_src c :eval never :tangle native/vision.h
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include "cv.h"
+  #include "highgui.h"
+  
+  
+  void* capture_from_cam(int i);
+  void* query_frame(void* capture);
+  void* load_image(char* file, int color);
+  void save_image(void* image, char* file);
+
+  void* isolate_hsv_range(void* image, 
+                          int h1, int s1, int v1, 
+                          int h2, int s2, int v2);
+  
+  float* circles(void* image, 
+                 int h1, int s1, int v1, 
+                 int h2, int s2, int v2,
+                 int min_r, int max_r, int min_d);
+  
+  int* bounding_boxes(void* image, 
+                      int h1, int s1, int v1, 
+                      int h2, int s2, int v2);
+#+end_src
+
+*** vision.c
+#+begin_src c :eval never :tangle native/vision.c :noweb yes
+  #include "vision.h"
+  
+  void* capture_from_cam(int i){
+    CvCapture* ptr = cvCaptureFromCAM(i);
+     
+    /* always check */
+    if (!ptr) {
+      fprintf( stderr, "Cannot open initialize webcam!\n" );
+      return NULL;
+    }
+    
+    return (void*) ptr;
+  }
+  
+  void* query_frame(void* capture){
+    return (void*)cvQueryFrame((CvCapture*)capture);
+  }
+  
+  void* load_image(char* file, int color){
+    if(color > 0)
+      color = CV_LOAD_IMAGE_COLOR;
+    else if(color == 0)
+      color = CV_LOAD_IMAGE_GRAYSCALE;
+    else if(color < 0)
+      color = CV_LOAD_IMAGE_UNCHANGED;
+
+    (void*)cvLoadImage(file, color);
+  }
+  
+  void save_image(void* image, char* file){
+    cvSaveImage( file, (IplImage*)image, NULL);
+  }
+  
+  <<native-lib-isolate-hsv>>
+  <<native-lib-circle>>
+  <<native-lib-bounding-box>>
+  
+#+end_src
+*** view.c
+#+begin_src c :eval never :tangle native/view.c
+  #include <stdio.h>
+  #include "cv.h"
+  #include "highgui.h"
+  #include "vision.h"
+  
+  int main( int argc, char **argv ){
+  
+    if ( argc > 2 ){
+      printf( "usage: %s camera\n", argv[0] );
+      return 1;
+    }
+  
+    int camera = 0;
+  
+    if(argc == 2)
+      camera = atoi (argv[1]);
+  
+    void* capture = capture_from_cam(camera);
+    int key = 0;
+    
+    cvNamedWindow("Camera Feed", CV_WINDOW_AUTOSIZE);
+   
+    while( key != 'q' ) {
+      cvShowImage( "Camera Feed", (IplImage*)query_frame(capture));
+      key = cvWaitKey( 1 );
+    }
+   
+    cvDestroyWindow( "Camera Feed" );
+    return 0;
+  }
+#+end_src
+*** detect_yellow_circle.c
+#+begin_src c :eval never :tangle native/detect_yellow_circle.c :noweb yes
+  #include <stdio.h>
+  #include "cv.h"
+  #include "highgui.h"
+  #include "vision.h"
+  
+  int main( int argc, char **argv ){
+  
+    if ( argc > 2 ){
+      printf( "usage: %s camera\n", argv[0] );
+      return 1;
+    }
+    
+    int camera = 0;
+    
+    if(argc == 2)
+      camera = atoi (argv[1]); 
+  
+    void* capture = capture_from_cam(camera);
+    int key = 0;
+    
+    cvNamedWindow("result", CV_WINDOW_AUTOSIZE);
+   
+    while( key != 'q' ) {
+  
+      void* image = query_frame(capture);
+
+      <<c-example-circle-detect>>      
+  
+      cvShowImage( "result", (IplImage*)image);
+      key = cvWaitKey( 1 );
+    }
+   
+    cvDestroyWindow( "result" );
+    return 0;
+  }
+#+end_src
+*** detect_bounding_box.c
+#+begin_src c :eval never :tangle native/detect_bounding_box.c :noweb yes
+  #include <stdio.h>
+  #include "cv.h"
+  #include "highgui.h"
+  #include "vision.h"
+  
+  int main( int argc, char **argv ){
+    cvNamedWindow("Box", CV_WINDOW_AUTOSIZE);
+  
+    void* image = load_image("soccerfield.jpeg", CV_LOAD_IMAGE_COLOR);
+
+    <<c-example-bounding-box>>
+    
+    cvShowImage("Box", (IplImage*)image);
+   
+    int key;
+    while( key != 'q' ) {
+      key = cvWaitKey(1);
+    }
+   
+    cvDestroyWindow("Box");
+    return 0;
+  }
+  
+#+end_src
+
+** Clojure
+*** project.clj
+#+begin_src clojure :eval never :tangle project.clj
+  (defproject vision "1.0.0-SNAPSHOT"
+    :description "FIXME: write"
+    :dependencies [[org.clojure/clojure "1.2.0"]
+                   [org.clojure/clojure-contrib "1.2.0"]
+                   [org.clojars.nakkaya/jna "3.2.7"]
+                   [vector-2d "1.0.0-SNAPSHOT"]])
+#+end_src
+
+*** core.clj
+#+begin_src clojure :tangle src/vision/core.clj
+  (ns vision.core
+   (:import (com.sun.jna Function Pointer)))
+    
+  (System/setProperty "jna.library.path" "./native/")
+    
+  (defn function [f]
+   (Function/getFunction "vision" f))
+    
+  (defn capture-from-cam [n]
+    (.invoke (function "capture_from_cam") Pointer (to-array [n])))
+    
+  (defn query-frame [c]
+    (.invoke (function "query_frame") Pointer (to-array [c])))
+    
+  (defn load-image [f c]
+    (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
+                                                                (= c :grayscale) 0
+                                                                (= c :unchanged) -1)])))
+  
+  (defn save-frame [i f]
+    (.invoke (function "save_image") (to-array [i f])))
+    
+  (defn circles [i [h1 s1 v1] [h2 s2 v2] min-r max-r min-d]
+    (if-let[ref (.invoke (function "circles")
+                         com.sun.jna.ptr.FloatByReference
+                         (to-array [i h1 s1 v1 h2 s2 v2 min-r max-r min-d]))]
+      (let [pointer (.getPointer ref)
+            count (.getFloat pointer 0)]
+        (partition 3 (seq (drop 1 (.getFloatArray pointer 0 (inc (* 3 count)))))))
+      []))
+  
+#+end_src
+
+*** graphics.clj
+#+begin_src clojure :tangle src/vision/graphics.clj
+  (ns vision.graphics)
+  
+  (defn- map-int [x in-min in-max out-min out-max]
+    (+ (/ (* (- x in-min) (- out-max out-min)) (- in-max in-min)) out-min))
+  
+  (defn image [f]
+    (javax.imageio.ImageIO/read (java.io.File. f)))
+  
+  (defn- image-panel [image]
+    (proxy [javax.swing.JPanel] []
+      (paintComponent [g] (.drawImage g image 0 0 this))))
+  
+  (defn color-picker [f]
+    (let [image (image f)
+          listener (proxy [java.awt.event.MouseListener] []
+                     (mouseClicked
+                      [e]
+                      (let [x (.getX e) y (.getY e)
+                            c (java.awt.Color.
+                               (.getRGB image  x y))
+                            hsb (java.awt.Color/RGBtoHSB
+                                 (.getRed c) (.getGreen c) (.getBlue c) nil)]
+                        (println x y (map #(map-int % 0 1 0 179) (seq hsb)))))
+                     (mousePressed [e])
+                     (mouseReleased [e])
+                     (mouseEntered [e])
+                     (mouseExited [e]))
+          panel  (doto (image-panel image)
+                   (.addMouseListener listener))]
+      (doto (javax.swing.JFrame.)
+        (.add panel)
+        (.setAlwaysOnTop true)
+        (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
+        (.setVisible true))))
+  
+  (defn circle [image [x y r] c]
+    (let [g (.getGraphics image)]
+      (.setColor g c)
+      (.draw g (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r)))))
+  
+  (defn plus [image [x y] c]
+    (let [g (.getGraphics image)]
+      (.setColor g c)
+      (.drawLine g x y (+ x 50) y)
+      (.drawLine g x y (- x 50) y)
+      (.drawLine g x y x (+ y 50))
+      (.drawLine g x y x (- y 50))))
+  
+  (defn view [image]
+    (doto (javax.swing.JFrame.)
+      (.add (image-panel image))
+      (.setAlwaysOnTop true)
+      (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
+      (.setVisible true)))
+#+end_src
+
+
