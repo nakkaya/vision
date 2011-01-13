@@ -311,11 +311,6 @@ Identify Robocup identification numbers,
     return (void*)cvQueryFrame((CvCapture*)capture);
   }
   
-  void release_capture(void* cap){
-    CvCapture* capture = (CvCapture*)cap;
-    cvReleaseCapture( &capture);
-  }
-  
   void* load_image(char* file, int color){
     if(color > 0)
       color = CV_LOAD_IMAGE_COLOR;
@@ -329,6 +324,16 @@ Identify Robocup identification numbers,
   
   void save_image(void* image, char* file){
     cvSaveImage( file, (IplImage*)image, NULL);
+  }
+  
+  void release_capture(void* cap){
+    CvCapture* capture = (CvCapture*)cap;
+    cvReleaseCapture( &capture);
+  }
+  
+  void release_image(void* p){
+    IplImage* image = (IplImage*)p;
+    cvReleaseImage(&image);
   }
   
   void release_memory(void* p){
@@ -378,6 +383,9 @@ Identify Robocup identification numbers,
     (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
                                                                 (= c :grayscale) 0
                                                                 (= c :unchanged) -1)])))
+  
+  (defn release-image [p]
+    (.invoke (function "release_image") (to-array [p])))
   
   (defn save-frame [i f]
     (.invoke (function "save_image") (to-array [i f])))
