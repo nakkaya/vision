@@ -164,6 +164,20 @@ Detect circles in the image that is in the given HSV range.
   
 #+end_src
 
+#+srcname: clojure-vision-circles
+#+begin_src clojure :eval no :tangle no
+  (defn circles [i [h1 s1 v1] [h2 s2 v2] min-r max-r min-d]
+    (if-let[ref (.invoke (function "circles")
+                         com.sun.jna.ptr.FloatByReference
+                         (to-array [i h1 s1 v1 h2 s2 v2 min-r max-r min-d]))]
+      (let [pointer (.getPointer ref)
+            count (.getFloat pointer 0)
+            circles (partition 3 (seq (drop 1 (.getFloatArray pointer 0 (inc (* 3 count))))))]
+        (release-memory ref)
+        circles)
+      []))
+#+end_src
+
 Example Clojure code to find yellow circles in an image,
 
 #+begin_src clojure :eval query :tangle no
@@ -397,6 +411,93 @@ Identify Robocup identification numbers,
   
 #+end_src
 
+* Misc
+#+srcname: native-lib-capture-camera
+#+begin_src c :eval never :tangle no
+  void* capture_from_cam(int i){
+    CvCapture* ptr = cvCaptureFromCAM(i);
+     
+    /* always check */
+    if (!ptr) {
+      fprintf( stderr, "Cannot open initialize webcam!\n" );
+      return NULL;
+    }
+    
+    return (void*) ptr;
+  }
+  
+  void* query_frame(void* capture){
+    return (void*)cvQueryFrame((CvCapture*)capture);
+  }  
+
+  void release_capture(void* cap){
+    CvCapture* capture = (CvCapture*)cap;
+    cvReleaseCapture( &capture);
+  }
+#+end_src
+
+#+srcname: clojure-vision-capture-camera
+#+begin_src clojure :eval never :tangle no
+  (defn capture-from-cam [n]
+    (.invoke (function "capture_from_cam") Pointer (to-array [n])))
+    
+  (defn query-frame [c]
+    (.invoke (function "query_frame") Pointer (to-array [c])))
+  
+  (defn release-capture [c]
+    (.invoke (function "release_capture") (to-array [c])))
+#+end_src
+
+#+srcname: native-lib-image
+#+begin_src c :eval never :tangle no
+  void* load_image(char* file, int color){
+    if(color > 0)
+      color = CV_LOAD_IMAGE_COLOR;
+    else if(color == 0)
+      color = CV_LOAD_IMAGE_GRAYSCALE;
+    else if(color < 0)
+      color = CV_LOAD_IMAGE_UNCHANGED;
+  
+    (void*)cvLoadImage(file, color);
+  }
+  
+  void save_image(void* image, char* file){
+    cvSaveImage( file, (IplImage*)image, NULL);
+  }
+  
+  void release_image(void* p){
+    IplImage* image = (IplImage*)p;
+    cvReleaseImage(&image);
+  }
+#+end_src
+
+#+srcname: clojure-vision-image
+#+begin_src clojure :eval never :tangle no
+  (defn load-image [f c]
+    (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
+                                                                (= c :grayscale) 0
+                                                                (= c :unchanged) -1)])))
+  
+  (defn release-image [p]
+    (.invoke (function "release_image") (to-array [p])))
+  
+  (defn save-image [i f]
+    (.invoke (function "save_image") (to-array [i f])))
+#+end_src
+
+#+srcname: native-lib-free
+#+begin_src c :eval never :tangle no
+  void release_memory(void* p){
+    free(p);
+  }
+#+end_src
+
+#+srcname: clojure-vision-free
+#+begin_src clojure :eval never :tangle no
+  (defn release-memory [p]
+    (.invoke (function "release_memory") (to-array [p])))
+#+end_src
+
 * Files                                                            :NOEXPORT:
 ** Native
 *** cmake
@@ -417,58 +518,15 @@ Identify Robocup identification numbers,
   #include "cv.h"
   #include "highgui.h"
   
-  void* capture_from_cam(int i){
-    CvCapture* ptr = cvCaptureFromCAM(i);
-     
-    /* always check */
-    if (!ptr) {
-      fprintf( stderr, "Cannot open initialize webcam!\n" );
-      return NULL;
-    }
-    
-    return (void*) ptr;
-  }
-  
-  void* query_frame(void* capture){
-    return (void*)cvQueryFrame((CvCapture*)capture);
-  }
-  
-  void* load_image(char* file, int color){
-    if(color > 0)
-      color = CV_LOAD_IMAGE_COLOR;
-    else if(color == 0)
-      color = CV_LOAD_IMAGE_GRAYSCALE;
-    else if(color < 0)
-      color = CV_LOAD_IMAGE_UNCHANGED;
-  
-    (void*)cvLoadImage(file, color);
-  }
-  
-  void save_image(void* image, char* file){
-    cvSaveImage( file, (IplImage*)image, NULL);
-  }
-  
-  void release_capture(void* cap){
-    CvCapture* capture = (CvCapture*)cap;
-    cvReleaseCapture( &capture);
-  }
-  
-  void release_image(void* p){
-    IplImage* image = (IplImage*)p;
-    cvReleaseImage(&image);
-  }
-  
-  void release_memory(void* p){
-    free(p);
-  }
-  
+  <<native-lib-capture-camera>>
+  <<native-lib-image>>
+  <<native-lib-free>>
   <<native-lib-isolate-hsv>>
   <<native-lib-circle>>
   <<native-lib-bounding-box>>
   <<native-lib-iplimage-to-rgb>>
   <<native-lib-template-matching>>
   <<native-lib-matching-shapes>>
-  
 #+end_src
 ** Clojure
 *** project.clj
@@ -490,45 +548,14 @@ Identify Robocup identification numbers,
     
   (defn function [f]
    (Function/getFunction "vision" f))
-  
-  (defn release-memory [p]
-    (.invoke (function "release_memory") (to-array [p])))
-  
-  (defn capture-from-cam [n]
-    (.invoke (function "capture_from_cam") Pointer (to-array [n])))
-    
-  (defn query-frame [c]
-    (.invoke (function "query_frame") Pointer (to-array [c])))
-  
-  (defn release-capture [c]
-    (.invoke (function "release_capture") (to-array [c])))
-    
-  (defn load-image [f c]
-    (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
-                                                                (= c :grayscale) 0
-                                                                (= c :unchanged) -1)])))
-  
-  (defn release-image [p]
-    (.invoke (function "release_image") (to-array [p])))
-  
-  (defn save-frame [i f]
-    (.invoke (function "save_image") (to-array [i f])))
-    
-  (defn circles [i [h1 s1 v1] [h2 s2 v2] min-r max-r min-d]
-    (if-let[ref (.invoke (function "circles")
-                         com.sun.jna.ptr.FloatByReference
-                         (to-array [i h1 s1 v1 h2 s2 v2 min-r max-r min-d]))]
-      (let [pointer (.getPointer ref)
-            count (.getFloat pointer 0)
-            circles (partition 3 (seq (drop 1 (.getFloatArray pointer 0 (inc (* 3 count))))))]
-        (release-memory ref)
-        circles)
-      []))
-  
+
+  <<clojure-vision-free>>
+  <<clojure-vision-capture-camera>>
+  <<clojure-vision-image>>
+  <<clojure-vision-circles>>
   <<clojure-vision-rgb-array-to-bufferedimage>>
   <<clojure-vision-template-match>>
   <<clojure-vision-match-shape>>
-  
 #+end_src
 
 *** graphics.clj
