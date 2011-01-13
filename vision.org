@@ -352,7 +352,50 @@ Identify Robocup identification numbers,
   
 #+end_src
 
+* Matching Shapes
+#+srcname: native-lib-matching-shapes
+#+begin_src c :eval never :tangle no
+  double match_shape(void* i1, void* i2, int mode){
+    IplImage* img1 = (IplImage*)i1;
+    IplImage* img2 = (IplImage*)i2;
+  
+    int calc = -1;
+    switch(mode) {
+      case 1:
+        calc = CV_CONTOURS_MATCH_I1; break;
+      case 2:
+        calc = CV_CONTOURS_MATCH_I2; break;
+      case 3:
+        calc = CV_CONTOURS_MATCH_I3; break;
+    }
+  
+    return cvMatchShapes (img1, img2, calc, 0);
+  }
+  
+#+end_src
 
+#+srcname: clojure-vision-match-shape
+#+begin_src clojure :eval no :tangle no
+  (defn match-shapes [img1 img2 calculation]
+    (let [calculation (cond (= :i1 calculation) 1
+                            (= :i2 calculation) 2
+                            (= :i3 calculation) 3)]
+      (.invoke (function "match_shape") Double (to-array [img1 img2 calculation]))))
+  
+#+end_src
+
+#+begin_src clojure :eval query :tangle no
+  (ns match-shape
+    (:use [vision core]))
+  
+  (let [raw (load-image "sample/shape1.png" :grayscale)
+        match (load-image "sample/shape1b_I1.png" :grayscale)
+        no-match (load-image "sample/shape1rot_I1.png" :grayscale)]
+  
+    (println (match-shapes raw match :i1))
+    (println (match-shapes raw no-match :i1)))
+  
+#+end_src
 
 * Files                                                            :NOEXPORT:
 ** Native
@@ -424,6 +467,7 @@ Identify Robocup identification numbers,
   <<native-lib-bounding-box>>
   <<native-lib-iplimage-to-rgb>>
   <<native-lib-template-matching>>
+  <<native-lib-matching-shapes>>
   
 #+end_src
 ** Clojure
@@ -483,6 +527,7 @@ Identify Robocup identification numbers,
   
   <<clojure-vision-rgb-array-to-bufferedimage>>
   <<clojure-vision-template-match>>
+  <<clojure-vision-match-shape>>
   
 #+end_src
 
