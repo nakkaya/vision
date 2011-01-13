@@ -400,19 +400,20 @@ Identify Robocup identification numbers,
 *** graphics.clj
 #+begin_src clojure :tangle src/vision/graphics.clj
   (ns vision.graphics
-    (:use vision.core)
+    (:use [vision core util])
     (:import (com.sun.jna Pointer)))
   
-  (defn- map-int [x in-min in-max out-min out-max]
-    (+ (/ (* (- x in-min) (- out-max out-min)) (- in-max in-min)) out-min))
-  
   (defmulti image class)
-  
-  (let [toolkit (. java.awt.Toolkit getDefaultToolkit)]
-    (defmethod image Pointer [pxs]
-               (let [[width height] (image-size pxs)]
-                 (.createImage toolkit (java.awt.image.MemoryImageSource.
-                                        width height (pixels pxs) 0 width)))))
+    
+  (defmethod image Pointer [pxs]
+             (let [[width height] (image-size pxs)
+                   pxs (pixels pxs)]
+               (java.awt.image.BufferedImage.
+                (. java.awt.image.ColorModel getRGBdefault)
+                (java.awt.image.Raster/createPackedRaster
+                 (java.awt.image.DataBufferInt. pxs (* width height))
+                 width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
+                false nil)))
   
   (defmethod image String [f]
              (javax.imageio.ImageIO/read (java.io.File. f)))
@@ -463,6 +464,7 @@ Identify Robocup identification numbers,
       (.setAlwaysOnTop true)
       (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
       (.setVisible true)))
+  
 #+end_src
 *** util.clj
 #+begin_src clojure :tangle src/vision/graphics.clj
