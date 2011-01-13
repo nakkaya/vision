@@ -27,11 +27,9 @@
     for (i = 0; i < img->height; i++){
       for (j = 0; j < img->width; j++){
   
-        uchar* ptr = cvPtr2D(img, i, j, NULL);
-  
-        unsigned char red = ptr[2];
-        unsigned char green = ptr[1];
-        unsigned char blue = ptr[0];
+        unsigned char red = CV_IMAGE_ELEM(img, uchar, i-1, (j-1)*3+2);
+        unsigned char green = CV_IMAGE_ELEM(img, uchar, i-1, (j-1)*3+1);
+        unsigned char blue = CV_IMAGE_ELEM(img, uchar, i-1, (j-1)*3);
   
         vals[index++] = 
           ((255 & 0xFF) << 24) | //alpha
