@@ -158,6 +158,7 @@ Detect circles in the image that is in the given HSV range.
   
     }
   
+    cvReleaseMemStorage(&storage);
     return coords;
   }
   
@@ -270,7 +271,8 @@ Identify Robocup identification numbers,
       coords[k+2] = b.width;
       coords[k+3] = b.height;
     }
-  
+
+    cvReleaseMemStorage(&storage);
     return coords;
   }
   
@@ -475,7 +477,7 @@ Identify Robocup identification numbers,
   
 #+end_src
 *** util.clj
-#+begin_src clojure :tangle src/vision/graphics.clj
+#+begin_src clojure :tangle src/vision/util.clj
   (ns vision.util)
   
   (defn map-int [x in-min in-max out-min out-max]
