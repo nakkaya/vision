@@ -272,6 +272,88 @@ Identify Robocup identification numbers,
   }
   
 #+end_src
+* Template matching
+#+srcname: native-lib-template-matching
+#+begin_src c :eval never :tangle no
+  int* template_match(void* i, void* t, int mode){
+    IplImage* image = (IplImage*)i;
+    IplImage* template = (IplImage*)t;
+  
+    IplImage* result = cvCreateImage(cvSize(image->width - template->width+1, 
+                                            image->height - template->height+1), 
+                                     IPL_DEPTH_32F, 1);
+    cvZero(result);
+  
+    int calc = -1;
+    switch(mode) {
+      case 1:
+        calc = CV_TM_SQDIFF; break;
+      case 2:
+        calc = CV_TM_SQDIFF_NORMED; break;
+      case 3:
+        calc = CV_TM_CCORR; break;
+      case 4:
+        calc = CV_TM_CCORR_NORMED; break;
+      case 5:
+        calc = CV_TM_CCOEFF; break;
+      case 6:
+        calc = CV_TM_CCOEFF_NORMED; break;
+    }
+  
+    cvMatchTemplate(image, template, result, calc);
+  
+    double min_val=0, max_val=0;
+    CvPoint min_loc, max_loc;
+    cvMinMaxLoc(result, &min_val, &max_val, &min_loc, &max_loc, NULL);
+  
+    cvReleaseImage(&result);
+  
+    int* vals = malloc(6 * sizeof(int));
+    vals[0] = min_val;
+    vals[1] = max_val;
+    vals[2] = min_loc.x;
+    vals[3] = min_loc.y;
+    vals[4] = max_loc.x;
+    vals[5] = max_loc.y;
+    return vals;
+  }
+  
+#+end_src
+
+#+srcname: clojure-vision-template-match
+#+begin_src clojure :eval no :tangle no
+  (defn template-match [image template calculation]
+    (let [calculation (cond (= :sqdiff calculation) 1
+                            (= :sqdiff-normed calculation) 2
+                            (= :ccorr calculation) 3
+                            (= :ccorr-normed calculation) 4
+                            (= :ccoeff calculation) 5
+                            (= :ccoeff-normed calculation) 6)
+          ref (.invoke (function "template_match")
+                       com.sun.jna.ptr.FloatByReference
+                       (to-array [image template calculation]))
+          pointer (.getPointer ref)
+          vals (.getIntArray pointer 0 6)]
+      (release-memory ref)
+      vals))
+  
+#+end_src
+
+#+begin_src clojure :eval query :tangle no
+  (ns template-match
+    (:use [vision core graphics]))
+  
+  (let [raw (load-image "sample/template-input.png" :color)
+        template (load-image "sample/template-match.png" :color)
+        [min max min-x min-y max-x max-y] (template-match raw template :ccorr-normed)
+        image (image raw)]
+    (plus image [max-x max-y] java.awt.Color/red)
+    (view image))
+  
+#+end_src
+
+
+
 * Files                                                            :NOEXPORT:
 ** Native
 *** cmake
@@ -341,6 +423,7 @@ Identify Robocup identification numbers,
   <<native-lib-circle>>
   <<native-lib-bounding-box>>
   <<native-lib-iplimage-to-rgb>>
+  <<native-lib-template-matching>>
   
 #+end_src
 ** Clojure
@@ -399,6 +482,7 @@ Identify Robocup identification numbers,
       []))
   
   <<clojure-vision-rgb-array-to-bufferedimage>>
+  <<clojure-vision-template-match>>
   
 #+end_src
 
