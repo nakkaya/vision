@@ -230,6 +230,7 @@ return a binary image where matches will be white rest will be black.
   
     cvReleaseImage(&imgHSV);
   
+    cvSaveImage( "temp3.png", imgThreshed, NULL);
     return (void*)imgThreshed;
   }
   
@@ -554,6 +555,44 @@ Detect circles in the image that is in the given HSV range.
       [ref (buffered-image ref)]))
 #+end_src
 
+#+srcname: native-lib-smooth
+#+begin_src c :eval never :tangle no
+  void* smooth(void* i, int mode, int param1, int param2, int param3, int param4){
+    IplImage* image = (IplImage*)i;
+    IplImage* ret = cvCreateImage(cvGetSize((IplImage*)image), image->depth, image->nChannels);
+
+    if(mode == 1)
+      mode = CV_BLUR_NO_SCALE;
+    else if (mode == 2)
+      mode = CV_BLUR;
+    else if (mode == 3)
+      mode = CV_GAUSSIAN;
+    else if (mode == 4)
+      mode = CV_MEDIAN;
+    else if (mode == 5)
+      mode = CV_BILATERAL;
+
+    cvSmooth(image, ret, mode, param1, param2 , param3 , param4);
+
+    return (void*)ret;
+  }
+#+end_src
+
+#+srcname: clojure-vision-smooth
+#+begin_src clojure :eval never :tangle no
+  (defn smooth [[p _] m p1 p2 p3 p4]
+    (let [ref (.invoke (function "smooth") Pointer
+                       (to-array [p (cond (= m :blur-no-scale) 1
+                                          (= m :blur) 2
+                                          (= m :gaussian) 3
+                                          (= m :median) 4
+                                          (= m :bilateral) 5
+                                          :default (throw (Exception. "Unknown Convertion.")))
+                                  p1 p2 p3 p4]))]
+      [ref (buffered-image ref)]))
+  
+#+end_src
+
 #+srcname: native-lib-free
 #+begin_src c :eval never :tangle no
   void release_memory(void* p){
@@ -672,6 +711,7 @@ Displays the image in a frame,
   <<native-lib-matching-shapes>>
   <<native-lib-convert-color>>
   <<native-lib-in-range-s>>
+  <<native-lib-smooth>>
 #+end_src
 ** Clojure
 *** project.clj
@@ -703,6 +743,7 @@ Displays the image in a frame,
   <<clojure-vision-match-shape>>
   <<clojure-in-range-s>>
   <<clojure-vision-convert-color>>
+  <<clojure-vision-smooth>>
 #+end_src
 
 *** graphics.clj
