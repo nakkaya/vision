@@ -1,4 +1,3 @@
-
 (ns vision.core
  (:import (com.sun.jna Function Pointer)))
   
@@ -9,6 +8,7 @@
 
 (defn release-memory [p]
   (.invoke (function "release_memory") (to-array [p])))
+
 (defn image-size [p]
   (let [ref (.invoke (function "image_size") com.sun.jna.ptr.IntByReference (to-array [p]))
         pointer (.getPointer ref)
@@ -34,6 +34,7 @@
        (java.awt.image.DataBufferInt. pxs (* width height))
        width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
       false nil))))
+
 (defn load-image [f c]
   (let [ref (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
                                                                         (= c :grayscale) 0
@@ -54,6 +55,7 @@
 
 (defn release-capture [c]
   (.invoke (function "release_capture") (to-array [c])))
+
 (defn circles [[i _] [h1 s1 v1] [h2 s2 v2] min-r max-r min-d]
   (if-let[ref (.invoke (function "circles")
                        com.sun.jna.ptr.FloatByReference
@@ -64,6 +66,7 @@
       (release-memory ref)
       circles)
     []))
+
 (defn template-match [[image _] template calculation]
   (let [calculation (cond (= :sqdiff calculation) 1
                           (= :sqdiff-normed calculation) 2
@@ -78,14 +81,17 @@
         vals (.getIntArray pointer 0 6)]
     (release-memory ref)
     vals))
+
 (defn match-shapes [img1 img2 calculation]
   (let [calculation (cond (= :i1 calculation) 1
                           (= :i2 calculation) 2
                           (= :i3 calculation) 3)]
     (.invoke (function "match_shape") Double (to-array [img1 img2 calculation]))))
+
 (defn in-range-s [[p _] [s11 s12 s13 s14] [s21 s22 s23 s24]]
   (let [ref (.invoke (function "in_range_s") Pointer (to-array [p s11 s12 s13 s14 s21 s22 s23 s24]))]
     [ref (buffered-image ref)]))
+
 (defn convert-color [[p _] m]
   (let [ref (.invoke (function "convert_color") Pointer
                      (to-array [p (cond (= m :rgb-hsv) 1
@@ -94,6 +100,7 @@
                                         (= m :hsv-bgr) 4
                                         :default (throw (Exception. "Unknown Convertion.")))]))]
     [ref (buffered-image ref)]))
+
 (defn smooth [[p _] m p1 p2 p3 p4]
   (let [ref (.invoke (function "smooth") Pointer
                      (to-array [p (cond (= m :blur-no-scale) 1

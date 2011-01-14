@@ -1,4 +1,3 @@
-
 (ns vision.graphics
   (:use [vision core util]))
 
@@ -27,6 +26,7 @@
       (.setAlwaysOnTop true)
       (.setSize (java.awt.Dimension. (.getWidth @image) (.getHeight @image)))
       (.setVisible true))))
+
 (defn circle [[pointer image] [x y r] color thickness]
   (let [g (.getGraphics @image)]
     (.setColor g color)
@@ -35,11 +35,13 @@
       (.setStroke (java.awt.BasicStroke. thickness))
       (.draw (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r))))
     (.fill g (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r))))))
+
 (defn line [[pointer image] [x1 y1] [x2 y2] color thickness]
   (doto (.getGraphics @image)
     (.setColor color)
     (.setStroke (java.awt.BasicStroke. thickness))
     (.drawLine x1 y1 x2 y2)))
+
 (defn view [[pointer image]]
   (doto (javax.swing.JFrame.)
     (.add (image-panel @image))

@@ -1,4 +1,3 @@
-
 (ns vision.util)
 
 (defn map-int [x in-min in-max out-min out-max]
