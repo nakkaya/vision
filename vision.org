@@ -499,8 +499,8 @@ Detect circles in the image that is in the given HSV range.
   (defn release-image [[p _]]
     (.invoke (function "release_image") (to-array [p])))
   
-  (defn save-image [i f]
-    (.invoke (function "save_image") (to-array [i f])))
+  (defn save-image [[p _] f]
+    (.invoke (function "save_image") (to-array [p f])))
   
 #+end_src
 
