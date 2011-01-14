@@ -246,7 +246,7 @@ Detect circles in the image that is in the given HSV range.
                  int h2, int s2, int v2,
                  int min_r, int max_r, int min_d){
     IplImage* threshed = isolate_hsv_range((IplImage*)image, h1, s1, v1, h2, s2, v2);
-  
+
     CvMemStorage* storage = cvCreateMemStorage(0);
     cvClearMemStorage(storage);
   
@@ -504,6 +504,56 @@ Detect circles in the image that is in the given HSV range.
   
 #+end_src
 
+#+srcname: native-lib-convert-color
+#+begin_src c :eval never :tangle no
+  void* convert_color(void* i, int mode){
+    IplImage* image = (IplImage*)i;
+    IplImage* converted = cvCreateImage(cvGetSize((IplImage*)image), image->depth, image->nChannels);
+    
+    if(mode == 1)
+      mode = CV_RGB2HSV;
+    else if (mode == 2)
+      mode = CV_HSV2RGB;
+    else if (mode == 3)
+      mode = CV_BGR2HSV;
+    else if (mode == 4)
+      mode = CV_HSV2BGR;
+  
+    cvCvtColor(image, converted, mode);  
+  
+    return (void*)converted;
+  }
+#+end_src
+
+#+srcname: clojure-vision-convert-color
+#+begin_src clojure :eval never :tangle no
+  (defn convert-color [[p _] m]
+    (let [ref (.invoke (function "convert_color") Pointer
+                       (to-array [p (cond (= m :rgb-hsv) 1
+                                          (= m :hsv-rgb) 2
+                                          (= m :bgr-hsv) 3
+                                          (= m :hsv-bgr) 4
+                                          :default (throw (Exception. "Unknown Convertion.")))]))]
+      [ref (buffered-image ref)]))
+#+end_src
+
+#+srcname: native-lib-in-range-s
+#+begin_src c :eval never :tangle no
+  void* in_range_s(void* i, int s11, int s12, int s13, int s14, int s21, int s22, int s23, int s24){
+    IplImage* image = (IplImage*)i;
+    IplImage* processed = cvCreateImage(cvGetSize((IplImage*)image), 8, 1);
+    cvInRangeS(image, cvScalar(s11, s12, s13, s14), cvScalar(s21, s22, s23, s24), processed);
+    return (void*)processed;
+  }
+#+end_src
+
+#+srcname: clojure-in-range-s
+#+begin_src clojure :eval never :tangle no
+  (defn in-range-s [[p _] [s11 s12 s13 s14] [s21 s22 s23 s24]]
+    (let [ref (.invoke (function "in_range_s") Pointer (to-array [p s11 s12 s13 s14 s21 s22 s23 s24]))]
+      [ref (buffered-image ref)]))
+#+end_src
+
 #+srcname: native-lib-free
 #+begin_src c :eval never :tangle no
   void release_memory(void* p){
@@ -620,6 +670,8 @@ Displays the image in a frame,
   <<native-lib-iplimage-to-rgb>>
   <<native-lib-template-matching>>
   <<native-lib-matching-shapes>>
+  <<native-lib-convert-color>>
+  <<native-lib-in-range-s>>
 #+end_src
 ** Clojure
 *** project.clj
@@ -649,6 +701,8 @@ Displays the image in a frame,
   <<clojure-vision-circles>>
   <<clojure-vision-template-match>>
   <<clojure-vision-match-shape>>
+  <<clojure-in-range-s>>
+  <<clojure-vision-convert-color>>
 #+end_src
 
 *** graphics.clj
