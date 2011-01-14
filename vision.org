@@ -5,10 +5,16 @@
 #+EXPORT_EXCLUDE_TAGS: NOEXPORT
 #+LaTeX_CLASS: literate-code
 
-* Sample Code
-** Capture From Webcam
+This is a literate program, inspired by Donald Knuth. It is intended
+to be read like a novel from cover to cover. The ideas are grounded in
+the actual source code.  The code in this documment is the executable
+source. The appendix gives the procedure for building the library from
+the enclosed sources.
 
-Display video from webcam,
+* Sample Code
+** Capture From a Camera
+
+Connect to a camera and show the images in a Window,
 
 #+begin_src clojure :eval query :tangle no
   (ns display-webcam
@@ -201,7 +207,8 @@ Identify Robocup identification numbers,
 #+end_src
 ** Isolate HSV Range
 
-Isolate a given HSV range. Matches will be white rest will be black.
+Isolate a given HSV range. This function will take an image, and
+return a binary image where matches will be white rest will be black.
 
 #+srcname: native-lib-isolate-hsv
 #+begin_src c :eval never :tangle no
@@ -487,7 +494,7 @@ Detect circles in the image that is in the given HSV range.
                                                                           (= c :unchanged) -1)]))]
       [ref (buffered-image ref)]))
   
-  (defn release-image [p]
+  (defn release-image [[p _]]
     (.invoke (function "release_image") (to-array [p])))
   
   (defn save-image [i f]
