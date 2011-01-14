@@ -26,7 +26,7 @@ Connect to a camera and show the images in a Window,
     (let [capture (capture-from-cam 0)
           state (ref {:loop true :img (query-frame capture)})
           frame (proxy [JFrame KeyListener] [] 
-                  (paint [g] (.drawImage g (second (:img @state)) 0 0 nil))
+                  (paint [g] (.drawImage g @(second (:img @state)) 0 0 nil))
                   (keyPressed [e])
                   (keyReleased [e])
                   (keyTyped [e] (dosync (alter state assoc :loop false))))]
@@ -196,13 +196,15 @@ Identify Robocup identification numbers,
       pxs))
   
   (defn- buffered-image [pxs]
-    (let [[width height] (image-size pxs)
-          pxs (pixels pxs)]
-      (java.awt.image.BufferedImage. (. java.awt.image.ColorModel getRGBdefault)
-                                     (java.awt.image.Raster/createPackedRaster
-                                      (java.awt.image.DataBufferInt. pxs (* width height))
-                                      width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
-                                     false nil)))
+    (delay
+     (let [[width height] (image-size pxs)
+           pxs (pixels pxs)]
+       (java.awt.image.BufferedImage.
+        (. java.awt.image.ColorModel getRGBdefault)
+        (java.awt.image.Raster/createPackedRaster
+         (java.awt.image.DataBufferInt. pxs (* width height))
+         width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
+        false nil))))
   
 #+end_src
 ** Isolate HSV Range
@@ -530,7 +532,7 @@ Routines for manipulating images,
                       [e]
                       (let [x (.getX e) y (.getY e)
                             c (java.awt.Color.
-                               (.getRGB image  x y))
+                               (.getRGB @image  x y))
                             hsb (java.awt.Color/RGBtoHSB
                                  (.getRed c) (.getGreen c) (.getBlue c) nil)]
                         (println x y (map #(map-int % 0 1 0 179) (seq hsb)))))
@@ -538,12 +540,12 @@ Routines for manipulating images,
                      (mouseReleased [e])
                      (mouseEntered [e])
                      (mouseExited [e]))
-          panel  (doto (image-panel image)
+          panel  (doto (image-panel @image)
                    (.addMouseListener listener))]
       (doto (javax.swing.JFrame.)
         (.add panel)
         (.setAlwaysOnTop true)
-        (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
+        (.setSize (java.awt.Dimension. (.getWidth @image) (.getHeight @image)))
         (.setVisible true))))
 #+end_src
 
@@ -553,7 +555,7 @@ print the HSV values for the pixels clicked.
 #+srcname: clojure-graphics-circle
 #+begin_src clojure :eval no :tangle no
   (defn circle [[pointer image] [x y r] color thickness]
-    (let [g (.getGraphics image)]
+    (let [g (.getGraphics @image)]
       (.setColor g color)
     (if (pos? thickness)
       (doto g
@@ -568,7 +570,7 @@ Draws simple, thick or filled circle,
 #+srcname: clojure-graphics-line
 #+begin_src clojure :eval no :tangle no
   (defn line [[pointer image] [x1 y1] [x2 y2] color thickness]
-    (doto (.getGraphics image)
+    (doto (.getGraphics @image)
       (.setColor color)
       (.setStroke (java.awt.BasicStroke. thickness))
       (.drawLine x1 y1 x2 y2)))
@@ -581,9 +583,9 @@ Draws simple or thick line segment,
 #+begin_src clojure :eval no :tangle no
   (defn view [[pointer image]]
     (doto (javax.swing.JFrame.)
-      (.add (image-panel image))
+      (.add (image-panel @image))
       (.setAlwaysOnTop true)
-      (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
+      (.setSize (java.awt.Dimension. (.getWidth @image) (.getHeight @image)))
       (.setVisible true)))
 #+end_src
 
