@@ -508,6 +508,67 @@ Detect circles in the image that is in the given HSV range.
     (.invoke (function "release_memory") (to-array [p])))
 #+end_src
 
+* Graphics
+Routines for manipulating images,
+
+#+srcname: clojure-graphics-color-picker
+#+begin_src clojure :eval no :tangle no
+  (defn- image-panel [image]
+    (proxy [javax.swing.JPanel] []
+      (paintComponent [g] (.drawImage g image 0 0 this))))
+  
+  (defn color-picker [[pointer image]]
+    (let [listener (proxy [java.awt.event.MouseListener] []
+                     (mouseClicked
+                      [e]
+                      (let [x (.getX e) y (.getY e)
+                            c (java.awt.Color.
+                               (.getRGB image  x y))
+                            hsb (java.awt.Color/RGBtoHSB
+                                 (.getRed c) (.getGreen c) (.getBlue c) nil)]
+                        (println x y (map #(map-int % 0 1 0 179) (seq hsb)))))
+                     (mousePressed [e])
+                     (mouseReleased [e])
+                     (mouseEntered [e])
+                     (mouseExited [e]))
+          panel  (doto (image-panel image)
+                   (.addMouseListener listener))]
+      (doto (javax.swing.JFrame.)
+        (.add panel)
+        (.setAlwaysOnTop true)
+        (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
+        (.setVisible true))))
+#+end_src
+
+#+srcname: clojure-graphics-circle
+#+begin_src clojure :eval no :tangle no
+  (defn circle [[pointer image] [x y r] c]
+    (let [g (.getGraphics image)]
+      (.setColor g c)
+      (.draw g (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r)))))
+#+end_src
+
+#+srcname: clojure-graphics-plus
+#+begin_src clojure :eval no :tangle no
+  (defn plus [[pointer image] [x y] c]
+    (let [g (.getGraphics image)]
+      (.setColor g c)
+      (.drawLine g x y (+ x 50) y)
+      (.drawLine g x y (- x 50) y)
+      (.drawLine g x y x (+ y 50))
+      (.drawLine g x y x (- y 50))))
+#+end_src
+
+#+srcname: clojure-graphics-view
+#+begin_src clojure :eval no :tangle no
+  (defn view [[pointer image]]
+    (doto (javax.swing.JFrame.)
+      (.add (image-panel image))
+      (.setAlwaysOnTop true)
+      (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
+      (.setVisible true)))
+#+end_src
+
 * Files                                                            :NOEXPORT:
 ** Native
 *** cmake
@@ -569,57 +630,14 @@ Detect circles in the image that is in the given HSV range.
 #+end_src
 
 *** graphics.clj
-#+begin_src clojure :tangle src/vision/graphics.clj
+#+begin_src clojure :tangle src/vision/graphics.clj :noweb yes
   (ns vision.graphics
-    (:use [vision core util])
-    (:import (com.sun.jna Pointer)))
+    (:use [vision core util]))
   
-  (defn- image-panel [image]
-    (proxy [javax.swing.JPanel] []
-      (paintComponent [g] (.drawImage g image 0 0 this))))
-  
-  (defn color-picker [[pointer image]]
-    (let [listener (proxy [java.awt.event.MouseListener] []
-                     (mouseClicked
-                      [e]
-                      (let [x (.getX e) y (.getY e)
-                            c (java.awt.Color.
-                               (.getRGB image  x y))
-                            hsb (java.awt.Color/RGBtoHSB
-                                 (.getRed c) (.getGreen c) (.getBlue c) nil)]
-                        (println x y (map #(map-int % 0 1 0 179) (seq hsb)))))
-                     (mousePressed [e])
-                     (mouseReleased [e])
-                     (mouseEntered [e])
-                     (mouseExited [e]))
-          panel  (doto (image-panel image)
-                   (.addMouseListener listener))]
-      (doto (javax.swing.JFrame.)
-        (.add panel)
-        (.setAlwaysOnTop true)
-        (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
-        (.setVisible true))))
-  
-  (defn circle [[pointer image] [x y r] c]
-    (let [g (.getGraphics image)]
-      (.setColor g c)
-      (.draw g (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r)))))
-  
-  (defn plus [[pointer image] [x y] c]
-    (let [g (.getGraphics image)]
-      (.setColor g c)
-      (.drawLine g x y (+ x 50) y)
-      (.drawLine g x y (- x 50) y)
-      (.drawLine g x y x (+ y 50))
-      (.drawLine g x y x (- y 50))))
-  
-  (defn view [[pointer image]]
-    (doto (javax.swing.JFrame.)
-      (.add (image-panel image))
-      (.setAlwaysOnTop true)
-      (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
-      (.setVisible true)))
-  
+  <<clojure-graphics-color-picker>>
+  <<clojure-graphics-circle>>
+  <<clojure-graphics-plus>>
+  <<clojure-graphics-view>>  
 #+end_src
 *** util.clj
 #+begin_src clojure :tangle src/vision/util.clj
