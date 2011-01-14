@@ -1,7 +1,7 @@
 (ns vision.core
  (:import (com.sun.jna Function Pointer)))
   
-(System/setProperty "jna.library.path" "./native/")
+(System/setProperty "jna.library.path" "./resources/lib/")
   
 (defn function [f]
  (Function/getFunction "vision" f))
