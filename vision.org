@@ -65,7 +65,7 @@ Identify Robocup identification numbers,
     (:use (clojure.contrib.generic [arithmetic :only [+ - *]]
                                    [comparison :only [=]]))
     (:use [vector-2d.core] :reload-all)
-    (:use [vision core graphics util]))
+    (:use [vision core graphics util] :reload-all))
   
   (def image-file "sample/robocup-marker.png")
   
@@ -95,16 +95,16 @@ Identify Robocup identification numbers,
         team  (circles frame [115 0 0] [125 255 255] 10 40 45)
         pink (circles frame [145 0 0] [165 255 255] 10 30 35)]
     
-    (doseq [c team]
-      (circle frame c java.awt.Color/red))
-    
     (doseq [c pink]
-      (circle frame c java.awt.Color/yellow))
+      (circle frame c java.awt.Color/yellow 3))
     
-    (plus frame (id-10 team pink) java.awt.Color/red)
-    (plus frame (id-09 team pink) java.awt.Color/red)
+    (circle frame (concat (id-10 team pink) [20]) java.awt.Color/red -1)
+    (circle frame (concat (id-09 team pink) [20]) java.awt.Color/red -1)
     
     (view frame))
+  
+    
+  
 #+end_src
 
 ** Template Matching
@@ -540,24 +540,35 @@ Routines for manipulating images,
         (.setVisible true))))
 #+end_src
 
+Displays the image in a frame with a mouse listener attached that will
+print the HSV values for the pixels clicked.
+
 #+srcname: clojure-graphics-circle
 #+begin_src clojure :eval no :tangle no
-  (defn circle [[pointer image] [x y r] c]
+  (defn circle [[pointer image] [x y r] color thickness]
     (let [g (.getGraphics image)]
-      (.setColor g c)
-      (.draw g (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r)))))
+      (.setColor g color)
+    (if (pos? thickness)
+      (doto g
+        (.setStroke (java.awt.BasicStroke. thickness))
+        (.draw (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r))))
+      (.fill g (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r))))))
+  
 #+end_src
 
-#+srcname: clojure-graphics-plus
+Draws simple, thick or filled circle,
+
+#+srcname: clojure-graphics-line
 #+begin_src clojure :eval no :tangle no
-  (defn plus [[pointer image] [x y] c]
-    (let [g (.getGraphics image)]
-      (.setColor g c)
-      (.drawLine g x y (+ x 50) y)
-      (.drawLine g x y (- x 50) y)
-      (.drawLine g x y x (+ y 50))
-      (.drawLine g x y x (- y 50))))
+  (defn line [[pointer image] [x1 y1] [x2 y2] color thickness]
+    (doto (.getGraphics image)
+      (.setColor color)
+      (.setStroke (java.awt.BasicStroke. thickness))
+      (.drawLine x1 y1 x2 y2)))
+  
 #+end_src
+
+Draws simple or thick line segment,
 
 #+srcname: clojure-graphics-view
 #+begin_src clojure :eval no :tangle no
@@ -568,6 +579,8 @@ Routines for manipulating images,
       (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
       (.setVisible true)))
 #+end_src
+
+Displays the image in a frame,
 
 * Files                                                            :NOEXPORT:
 ** Native
@@ -636,7 +649,7 @@ Routines for manipulating images,
   
   <<clojure-graphics-color-picker>>
   <<clojure-graphics-circle>>
-  <<clojure-graphics-plus>>
+  <<clojure-graphics-line>>
   <<clojure-graphics-view>>  
 #+end_src
 *** util.clj
