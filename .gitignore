@@ -1,6 +1,2 @@
 lib/
-native/
-project.clj
-src/
-*.pdf
-*.tex
+
