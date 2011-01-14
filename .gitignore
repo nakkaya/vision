@@ -1,2 +1,6 @@
-lib/
-
+*.jar
+*.dylib
+*.cmake
+Makefile
+CMakeFiles
+CMakeCache.txt
