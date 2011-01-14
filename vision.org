@@ -5,7 +5,7 @@
 #+EXPORT_EXCLUDE_TAGS: NOEXPORT
 #+LaTeX_CLASS: literate-code
 
-* IplImage to Image
+* IplImage to BufferedImage
 #+srcname: native-lib-iplimage-to-rgb
 #+begin_src c :eval never :tangle no
   int* image_size(void* m){
@@ -61,6 +61,15 @@
       (release-memory ref)
       pxs))
   
+  (defn- buffered-image [pxs]
+    (let [[width height] (image-size pxs)
+          pxs (pixels pxs)]
+      (java.awt.image.BufferedImage. (. java.awt.image.ColorModel getRGBdefault)
+                                     (java.awt.image.Raster/createPackedRaster
+                                      (java.awt.image.DataBufferInt. pxs (* width height))
+                                      width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
+                                     false nil)))
+  
 #+end_src
 
 Display video from webcam,
@@ -73,16 +82,16 @@ Display video from webcam,
   
   (defn display []
     (let [capture (capture-from-cam 0)
-          state (ref {:loop true :img (image (query-frame capture))})
+          state (ref {:loop true :img (query-frame capture)})
           frame (proxy [JFrame KeyListener] [] 
-                  (paint [g] (.drawImage g (:img @state) 0 0 nil))
+                  (paint [g] (.drawImage g (second (:img @state)) 0 0 nil))
                   (keyPressed [e])
                   (keyReleased [e])
                   (keyTyped [e] (dosync (alter state assoc :loop false))))]
       
       (future
        (while (:loop @state)
-         (dosync (alter state assoc :img (image (query-frame capture))))
+         (dosync (alter state assoc :img (query-frame capture)))
          (.repaint frame))
        (release-capture capture)
        (.setVisible frame false))
@@ -164,7 +173,7 @@ Detect circles in the image that is in the given HSV range.
 
 #+srcname: clojure-vision-circles
 #+begin_src clojure :eval no :tangle no
-  (defn circles [i [h1 s1 v1] [h2 s2 v2] min-r max-r min-d]
+  (defn circles [[i _] [h1 s1 v1] [h2 s2 v2] min-r max-r min-d]
     (if-let[ref (.invoke (function "circles")
                          com.sun.jna.ptr.FloatByReference
                          (to-array [i h1 s1 v1 h2 s2 v2 min-r max-r min-d]))]
@@ -229,20 +238,19 @@ Identify Robocup identification numbers,
                     (take 2 v) h))) nil team)))
   
   (let [frame (load-image image-file :color)
-        image (image image-file)
         team  (circles frame [115 0 0] [125 255 255] 10 40 45)
         pink (circles frame [145 0 0] [165 255 255] 10 30 35)]
     
     (doseq [c team]
-      (circle image c java.awt.Color/red))
+      (circle frame c java.awt.Color/red))
     
     (doseq [c pink]
-      (circle image c java.awt.Color/yellow))
+      (circle frame c java.awt.Color/yellow))
     
-    (plus image (id-10 team pink) java.awt.Color/red)
-    (plus image (id-09 team pink) java.awt.Color/red)
+    (plus frame (id-10 team pink) java.awt.Color/red)
+    (plus frame (id-09 team pink) java.awt.Color/red)
     
-    (view image))
+    (view frame))
 #+end_src
 
 * Finding bounding boxes
@@ -334,7 +342,7 @@ Identify Robocup identification numbers,
 
 #+srcname: clojure-vision-template-match
 #+begin_src clojure :eval no :tangle no
-  (defn template-match [image template calculation]
+  (defn template-match [[image _] template calculation]
     (let [calculation (cond (= :sqdiff calculation) 1
                             (= :sqdiff-normed calculation) 2
                             (= :ccorr calculation) 3
@@ -357,10 +365,9 @@ Identify Robocup identification numbers,
   
   (let [raw (load-image "sample/template-input.png" :color)
         template (load-image "sample/template-match.png" :color)
-        [min max min-x min-y max-x max-y] (template-match raw template :ccorr-normed)
-        image (image raw)]
-    (plus image [max-x max-y] java.awt.Color/red)
-    (view image))
+        [min max min-x min-y max-x max-y] (template-match raw template :ccorr-normed)]
+    (plus raw [max-x max-y] java.awt.Color/red)
+    (view raw))
   
 #+end_src
 
@@ -440,10 +447,12 @@ Identify Robocup identification numbers,
     (.invoke (function "capture_from_cam") Pointer (to-array [n])))
     
   (defn query-frame [c]
-    (.invoke (function "query_frame") Pointer (to-array [c])))
+    (let [ref (.invoke (function "query_frame") Pointer (to-array [c]))]
+      [ref (buffered-image ref)]))
   
   (defn release-capture [c]
     (.invoke (function "release_capture") (to-array [c])))
+  
 #+end_src
 
 #+srcname: native-lib-image
@@ -472,15 +481,17 @@ Identify Robocup identification numbers,
 #+srcname: clojure-vision-image
 #+begin_src clojure :eval never :tangle no
   (defn load-image [f c]
-    (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
-                                                                (= c :grayscale) 0
-                                                                (= c :unchanged) -1)])))
+    (let [ref (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
+                                                                          (= c :grayscale) 0
+                                                                          (= c :unchanged) -1)]))]
+      [ref (buffered-image ref)]))
   
   (defn release-image [p]
     (.invoke (function "release_image") (to-array [p])))
   
   (defn save-image [i f]
     (.invoke (function "save_image") (to-array [i f])))
+  
 #+end_src
 
 #+srcname: native-lib-free
@@ -548,10 +559,10 @@ Identify Robocup identification numbers,
    (Function/getFunction "vision" f))
 
   <<clojure-vision-free>>
-  <<clojure-vision-capture-camera>>
-  <<clojure-vision-image>>
-  <<clojure-vision-circles>>
   <<clojure-vision-rgb-array-to-bufferedimage>>
+  <<clojure-vision-image>>
+  <<clojure-vision-capture-camera>>
+  <<clojure-vision-circles>>
   <<clojure-vision-template-match>>
   <<clojure-vision-match-shape>>
 #+end_src
@@ -562,28 +573,12 @@ Identify Robocup identification numbers,
     (:use [vision core util])
     (:import (com.sun.jna Pointer)))
   
-  (defmulti image class)
-    
-  (defmethod image Pointer [pxs]
-             (let [[width height] (image-size pxs)
-                   pxs (pixels pxs)]
-               (java.awt.image.BufferedImage.
-                (. java.awt.image.ColorModel getRGBdefault)
-                (java.awt.image.Raster/createPackedRaster
-                 (java.awt.image.DataBufferInt. pxs (* width height))
-                 width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
-                false nil)))
-  
-  (defmethod image String [f]
-             (javax.imageio.ImageIO/read (java.io.File. f)))
-  
   (defn- image-panel [image]
     (proxy [javax.swing.JPanel] []
       (paintComponent [g] (.drawImage g image 0 0 this))))
   
-  (defn color-picker [f]
-    (let [image (image f)
-          listener (proxy [java.awt.event.MouseListener] []
+  (defn color-picker [[pointer image]]
+    (let [listener (proxy [java.awt.event.MouseListener] []
                      (mouseClicked
                       [e]
                       (let [x (.getX e) y (.getY e)
@@ -604,12 +599,12 @@ Identify Robocup identification numbers,
         (.setSize (java.awt.Dimension. (.getWidth image) (.getHeight image)))
         (.setVisible true))))
   
-  (defn circle [image [x y r] c]
+  (defn circle [[pointer image] [x y r] c]
     (let [g (.getGraphics image)]
       (.setColor g c)
       (.draw g (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r)))))
   
-  (defn plus [image [x y] c]
+  (defn plus [[pointer image] [x y] c]
     (let [g (.getGraphics image)]
       (.setColor g c)
       (.drawLine g x y (+ x 50) y)
@@ -617,7 +612,7 @@ Identify Robocup identification numbers,
       (.drawLine g x y x (+ y 50))
       (.drawLine g x y x (- y 50))))
   
-  (defn view [image]
+  (defn view [[pointer image]]
     (doto (javax.swing.JFrame.)
       (.add (image-panel image))
       (.setAlwaysOnTop true)
