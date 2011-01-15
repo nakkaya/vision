@@ -56,10 +56,10 @@
 (defn release-capture [c]
   (.invoke (function "release_capture") (to-array [c])))
 
-(defn circles [[i _] [h1 s1 v1] [h2 s2 v2] min-r max-r min-d]
-  (if-let[ref (.invoke (function "circles")
+(defn hough-circles [[i _] dp min_d p1 p2 min-r max-r]
+  (if-let[ref (.invoke (function "hough_circles")
                        com.sun.jna.ptr.FloatByReference
-                       (to-array [i h1 s1 v1 h2 s2 v2 min-r max-r min-d]))]
+                       (to-array [i dp min_d p1 p2 min-r max-r]))]
     (let [pointer (.getPointer ref)
           count (.getFloat pointer 0)
           circles (partition 3 (seq (drop 1 (.getFloatArray pointer 0 (inc (* 3 count))))))]

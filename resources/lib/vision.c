@@ -68,18 +68,14 @@ void* isolate_hsv_range(void* image,
   return (void*)imgThreshed;
 }
 
-float* circles(void* image, 
-               int h1, int s1, int v1, 
-               int h2, int s2, int v2,
-               int min_r, int max_r, int min_d){
-  IplImage* threshed = isolate_hsv_range((IplImage*)image, h1, s1, v1, h2, s2, v2);
+float* hough_circles(void* img, int dp, int min_d, int p1, int p2, int min_r, int max_r){
+  IplImage* image = (IplImage*)img;
 
   CvMemStorage* storage = cvCreateMemStorage(0);
   cvClearMemStorage(storage);
 
-  CvSeq* circles = cvHoughCircles(threshed, storage, CV_HOUGH_GRADIENT, 2, 
-                                  min_d, 100, 40, min_r, max_r);
-  cvReleaseImage(&threshed);
+  CvSeq* circles = 
+    cvHoughCircles(image, storage, CV_HOUGH_GRADIENT, dp, min_d, p1, p2, min_r, max_r);
 
   if(circles->total == 0)
     return NULL;
