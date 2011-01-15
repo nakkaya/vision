@@ -2,7 +2,15 @@
  (:import (com.sun.jna Function Pointer)))
   
 (System/setProperty "jna.library.path" "./resources/lib/")
-  
+
+(defmacro -->
+  ([x] x)
+  ([x form] `(let [img# ~x
+                   next# (~(first form) img# ~@(next form))]
+               (release-image img#)
+               next#))
+  ([x form & more] `(--> (--> ~x ~form) ~@more)))
+
 (defn function [f]
  (Function/getFunction "vision" f))
 
