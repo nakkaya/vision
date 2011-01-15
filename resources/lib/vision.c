@@ -48,26 +48,6 @@ void release_memory(void* p){
   free(p);
 }
 
-void* isolate_hsv_range(void* image, 
-                        int h1, int s1, int v1, 
-                        int h2, int s2, int v2){
-  // Convert the image into an HSV image
-  IplImage* imgHSV = cvCreateImage(cvGetSize((IplImage*)image), 8, 3);
-
-  cvCvtColor(image, imgHSV, CV_BGR2HSV);
-
-  IplImage* imgThreshed = cvCreateImage(cvGetSize((IplImage*)image), 8, 1);
-
-  cvInRangeS(imgHSV, cvScalar(h1, s1, v1, 0), cvScalar(h2, s2, v2, 0), imgThreshed);
-
-  cvSmooth( imgThreshed, imgThreshed, CV_GAUSSIAN, 9, 9 , 0 , 0);
-
-  cvReleaseImage(&imgHSV);
-
-  cvSaveImage( "temp3.png", imgThreshed, NULL);
-  return (void*)imgThreshed;
-}
-
 float* hough_circles(void* img, int dp, int min_d, int p1, int p2, int min_r, int max_r){
   IplImage* image = (IplImage*)img;
 
@@ -97,23 +77,19 @@ float* hough_circles(void* img, int dp, int min_d, int p1, int p2, int min_r, in
   return coords;
 }
 
-int* bounding_boxes(void* image, 
-                    int h1, int s1, int v1, 
-                    int h2, int s2, int v2){
-
-  IplImage* threshed = isolate_hsv_range((IplImage*)image, h1, s1, v1, h2, s2, v2);
-
+int* bounding_rect(void* m){
+  IplImage* image = (IplImage*)m;
   CvSeq* boxes;
   CvMemStorage* storage = cvCreateMemStorage(0);
   cvClearMemStorage(storage);
   
-  int total = cvFindContours(threshed, storage, &boxes, sizeof(CvContour), 
+  int total = cvFindContours(image, storage, &boxes, sizeof(CvContour),
                              CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
 
-  cvReleaseImage(&threshed);
-
-  if(total == 0)
+  if(total == 0){
+    cvReleaseMemStorage(&storage);
     return NULL;
+  }
   
   int* coords = malloc((1 + 4 * total) * sizeof(int));
   coords[0] = total;

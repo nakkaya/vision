@@ -75,6 +75,15 @@
       circles)
     []))
 
+(defn bounding-rect [[i _]]
+  (if-let[ref (.invoke (function "bounding_rect") com.sun.jna.ptr.IntByReference (to-array [i]))]
+    (let [pointer (.getPointer ref)
+          count (.getInt pointer 0)
+          rects (partition 4 (seq (drop 1 (.getIntArray pointer 0 (inc (* 3 count))))))]
+      (release-memory ref)
+      rects)
+    []))
+
 (defn template-match [[image _] template calculation]
   (let [calculation (cond (= :sqdiff calculation) 1
                           (= :sqdiff-normed calculation) 2
