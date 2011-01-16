@@ -3,6 +3,75 @@
 #include "cv.h"
 #include "highgui.h"
 
+int* image_size(void* m){
+  IplImage* img = (IplImage*)m;    
+  int* vals = malloc(2 * sizeof(int));
+  vals[0] = img->width;
+  vals[1] = img->height;
+  return vals;
+}
+
+// 1 - BGR
+// 2 - BINARY
+// 3 - HSV
+// 4 - RGB
+int* pixels(void* m, int type){
+  IplImage* img = (IplImage*)m;
+
+  int* vals = malloc(img->height * img->width * sizeof(int));
+  int i,j;
+  int index = 0;
+
+  int release = 0;
+  if(type == 3){
+    IplImage* tmp = cvCreateImage(cvGetSize((IplImage*)img), img->depth, img->nChannels);
+    cvCvtColor(img, tmp, CV_HSV2BGR);
+    img = tmp;
+    release = 1;
+    type = 1;
+  }else if(type == 4){
+    IplImage* tmp = cvCreateImage(cvGetSize((IplImage*)img), img->depth, img->nChannels);
+    cvCvtColor(img, tmp, CV_RGB2BGR);
+    img = tmp;
+    release = 1;
+    type = 1;
+  }
+
+  if(type == 1){
+    for (i = 0; i < img->height; i++){
+      for (j = 0; j < img->width; j++){
+
+        unsigned char red = CV_IMAGE_ELEM(img, uchar, i, (j)*3+2);
+        unsigned char green = CV_IMAGE_ELEM(img, uchar, i, (j)*3+1);
+        unsigned char blue = CV_IMAGE_ELEM(img, uchar, i, (j)*3);
+
+        vals[index++] = 
+          ((255 & 0xFF) << 24) | //alpha
+          (((int)red & 0xFF) << 16) | 
+          (((int)green & 0xFF) << 8) |
+          (((int)blue & 0xFF) << 0);
+      }
+    }
+  }else if(type == 2){
+    for (i = 0; i < img->height; i++){
+      for (j = 0; j < img->width; j++){
+
+        uchar pixel = CV_IMAGE_ELEM(img, uchar, i, j);
+
+        if(pixel == 0)
+          vals[index++] = 0xFF000000;
+        else
+          vals[index++] = 0xFFFFFFFF;
+      }
+    }
+  }
+
+  if(release == 1)
+    cvReleaseImage(&img);
+
+  return vals;
+}
+
 void* capture_from_cam(int i){
   CvCapture* ptr = cvCaptureFromCAM(i);
    
@@ -106,39 +175,6 @@ int* bounding_rect(void* m){
 
   cvReleaseMemStorage(&storage);
   return coords;
-}
-
-int* image_size(void* m){
-  IplImage* img = (IplImage*)m;    
-  int* vals = malloc(2 * sizeof(int));
-  vals[0] = img->width;
-  vals[1] = img->height;
-  return vals;
-}
-
-int* pixels(void* m){
-  IplImage* img = (IplImage*)m;
-    
-  int* vals = malloc(img->height * img->width * sizeof(int));
-
-  int i,j;
-  int index = 0;
-  for (i = 0; i < img->height; i++){
-    for (j = 0; j < img->width; j++){
-
-      unsigned char red = CV_IMAGE_ELEM(img, uchar, i-1, (j-1)*3+2);
-      unsigned char green = CV_IMAGE_ELEM(img, uchar, i-1, (j-1)*3+1);
-      unsigned char blue = CV_IMAGE_ELEM(img, uchar, i-1, (j-1)*3);
-
-      vals[index++] = 
-        ((255 & 0xFF) << 24) | //alpha
-        (((int)red & 0xFF) << 16) | 
-        (((int)green & 0xFF) << 8) |
-        (((int)blue & 0xFF) << 0);
-    }
-  }
-
-  return vals;
 }
 
 int* template_match(void* i, void* t, int mode){

@@ -24,18 +24,18 @@
     (release-memory ref)
     info))
 
-(defn pixels [p]
-  (let [ref (.invoke (function "pixels") com.sun.jna.ptr.IntByReference (to-array [p]))
+(defn pixels [p t]
+  (let [ref (.invoke (function "pixels") com.sun.jna.ptr.IntByReference (to-array [p t]))
         pointer (.getPointer ref)
         [width height] (image-size p)
         pxs (.getIntArray pointer 0 (* width height))]
     (release-memory ref)
     pxs))
 
-(defn- buffered-image [pxs]
+(defn- buffered-image [pxs t]
   (delay
    (let [[width height] (image-size pxs)
-         pxs (pixels pxs)]
+         pxs (pixels pxs t)]
      (java.awt.image.BufferedImage.
       (. java.awt.image.ColorModel getRGBdefault)
       (java.awt.image.Raster/createPackedRaster
@@ -47,7 +47,7 @@
   (let [ref (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
                                                                         (= c :grayscale) 0
                                                                         (= c :unchanged) -1)]))]
-    [ref (buffered-image ref)]))
+    [ref (buffered-image ref 1) 1]))
 
 (defn release-image [[p _]]
   (.invoke (function "release_image") (to-array [p])))
@@ -59,7 +59,7 @@
   
 (defn query-frame [c]
   (let [ref (.invoke (function "query_frame") Pointer (to-array [c]))]
-    [ref (buffered-image ref)]))
+    [ref (buffered-image ref 1) 1]))
 
 (defn release-capture [c]
   (.invoke (function "release_capture") (to-array [c])))
@@ -107,7 +107,7 @@
 
 (defn in-range-s [[p _] [s11 s12 s13 s14] [s21 s22 s23 s24]]
   (let [ref (.invoke (function "in_range_s") Pointer (to-array [p s11 s12 s13 s14 s21 s22 s23 s24]))]
-    [ref (buffered-image ref)]))
+    [ref (buffered-image ref 2) 2]))
 
 (defn convert-color [[p _] m]
   (let [ref (.invoke (function "convert_color") Pointer
@@ -115,10 +115,14 @@
                                         (= m :hsv-rgb) 2
                                         (= m :bgr-hsv) 3
                                         (= m :hsv-bgr) 4
-                                        :default (throw (Exception. "Unknown Convertion.")))]))]
-    [ref (buffered-image ref)]))
+                                        :default (throw (Exception. "Unknown Convertion.")))]))
+        type (cond (= m :rgb-hsv) 3
+                   (= m :hsv-rgb) 4
+                   (= m :bgr-hsv) 3
+                   (= m :hsv-bgr) 1)]
+    [ref (buffered-image ref type) type]))
 
-(defn smooth [[p _] m p1 p2 p3 p4]
+(defn smooth [[p _ t] m p1 p2 p3 p4]
   (let [ref (.invoke (function "smooth") Pointer
                      (to-array [p (cond (= m :blur-no-scale) 1
                                         (= m :blur) 2
@@ -127,4 +131,4 @@
                                         (= m :bilateral) 5
                                         :default (throw (Exception. "Unknown Convertion.")))
                                 p1 p2 p3 p4]))]
-    [ref (buffered-image ref)]))
+    [ref (buffered-image ref t) t]))
