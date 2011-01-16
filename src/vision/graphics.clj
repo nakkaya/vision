@@ -42,6 +42,15 @@
     (.setStroke (java.awt.BasicStroke. thickness))
     (.drawLine x1 y1 x2 y2)))
 
+(defn rectangle [[pointer image] x y width height color thickness]
+  (let [g (.getGraphics @image)]
+    (.setColor g color)
+  (if (pos? thickness)
+    (doto g
+      (.setStroke (java.awt.BasicStroke. thickness))
+      (.drawRect x y width height))
+    (.fillRect x y width height))))
+
 (defn view [[pointer image]]
   (doto (javax.swing.JFrame.)
     (.add (image-panel @image))
