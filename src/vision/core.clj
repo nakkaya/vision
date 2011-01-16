@@ -44,9 +44,11 @@
       false nil))))
 
 (defn load-image [f c]
-  (let [ref (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
-                                                                        (= c :grayscale) 0
-                                                                        (= c :unchanged) -1)]))
+  (let [ref (.invoke (function "load_image") Pointer
+                     (to-array [f (cond (= c :color) 1
+                                        (= c :grayscale) 0
+                                        (= c :unchanged) -1
+                                        :default (throw (Exception. "Unknown Type.")))]))
         type (cond (= c :color) 1
                    (= c :grayscale) 5
                    (= c :unchanged) 1)]
@@ -93,7 +95,8 @@
                           (= :ccorr calculation) 3
                           (= :ccorr-normed calculation) 4
                           (= :ccoeff calculation) 5
-                          (= :ccoeff-normed calculation) 6)
+                          (= :ccoeff-normed calculation) 6
+                          :default (throw (Exception. "Unknown Calculation.")))
         ref (.invoke (function "match_template")
                      com.sun.jna.ptr.FloatByReference
                      (to-array [image template calculation]))
@@ -105,7 +108,8 @@
 (defn match-shapes [[img1 _] [img2 _] calculation]
   (let [calculation (cond (= :i1 calculation) 1
                           (= :i2 calculation) 2
-                          (= :i3 calculation) 3)]
+                          (= :i3 calculation) 3
+                          :default (throw (Exception. "Unknown Calculation.")))]
     (.invoke (function "match_shapes") Double (to-array [img1 img2 calculation]))))
 
 (defn in-range-s [[p _] [s11 s12 s13 s14] [s21 s22 s23 s24]]
