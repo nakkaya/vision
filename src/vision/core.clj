@@ -17,7 +17,7 @@
 (defn release-memory [p]
   (.invoke (function "release_memory") (to-array [p])))
 
-(defn image-size [p]
+(defn image-size [[p _]]
   (let [ref (.invoke (function "image_size") com.sun.jna.ptr.IntByReference (to-array [p]))
         pointer (.getPointer ref)
         info (seq (.getIntArray pointer 0 2))]
@@ -27,14 +27,14 @@
 (defn pixels [p t]
   (let [ref (.invoke (function "pixels") com.sun.jna.ptr.IntByReference (to-array [p t]))
         pointer (.getPointer ref)
-        [width height] (image-size p)
+        [width height] (image-size [p])
         pxs (.getIntArray pointer 0 (* width height))]
     (release-memory ref)
     pxs))
 
 (defn- buffered-image [pxs t]
   (delay
-   (let [[width height] (image-size pxs)
+   (let [[width height] (image-size [pxs])
          pxs (pixels pxs t)]
      (java.awt.image.BufferedImage.
       (. java.awt.image.ColorModel getRGBdefault)
@@ -84,7 +84,7 @@
       rects)
     []))
 
-(defn template-match [[image _] template calculation]
+(defn template-match [[image _] [template _] calculation]
   (let [calculation (cond (= :sqdiff calculation) 1
                           (= :sqdiff-normed calculation) 2
                           (= :ccorr calculation) 3
