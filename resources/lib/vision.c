@@ -177,7 +177,7 @@ int* bounding_rect(void* m){
   return coords;
 }
 
-int* template_match(void* i, void* t, int mode){
+int* match_template(void* i, void* t, int mode){
   IplImage* image = (IplImage*)i;
   IplImage* template = (IplImage*)t;
 
@@ -220,7 +220,7 @@ int* template_match(void* i, void* t, int mode){
   return vals;
 }
 
-double match_shape(void* i1, void* i2, int mode){
+double match_shapes(void* i1, void* i2, int mode){
   IplImage* img1 = (IplImage*)i1;
   IplImage* img2 = (IplImage*)i2;
 

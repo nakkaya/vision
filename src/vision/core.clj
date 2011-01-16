@@ -84,14 +84,14 @@
       rects)
     []))
 
-(defn template-match [[image _] [template _] calculation]
+(defn match-template [[image _] [template _] calculation]
   (let [calculation (cond (= :sqdiff calculation) 1
                           (= :sqdiff-normed calculation) 2
                           (= :ccorr calculation) 3
                           (= :ccorr-normed calculation) 4
                           (= :ccoeff calculation) 5
                           (= :ccoeff-normed calculation) 6)
-        ref (.invoke (function "template_match")
+        ref (.invoke (function "match_template")
                      com.sun.jna.ptr.FloatByReference
                      (to-array [image template calculation]))
         pointer (.getPointer ref)
@@ -99,11 +99,11 @@
     (release-memory ref)
     vals))
 
-(defn match-shapes [img1 img2 calculation]
+(defn match-shapes [[img1 _] [img2 _] calculation]
   (let [calculation (cond (= :i1 calculation) 1
                           (= :i2 calculation) 2
                           (= :i3 calculation) 3)]
-    (.invoke (function "match_shape") Double (to-array [img1 img2 calculation]))))
+    (.invoke (function "match_shapes") Double (to-array [img1 img2 calculation]))))
 
 (defn in-range-s [[p _] [s11 s12 s13 s14] [s21 s22 s23 s24]]
   (let [ref (.invoke (function "in_range_s") Pointer (to-array [p s11 s12 s13 s14 s21 s22 s23 s24]))]
