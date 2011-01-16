@@ -5,7 +5,10 @@
   (proxy [javax.swing.JPanel] []
     (paintComponent [g] (.drawImage g image 0 0 this))))
 
-(defn color-picker [[pointer image]]
+(defn color-picker
+  "Displays the image in a frame with a mouse listener attached that will
+   print the HSV values for the pixels clicked."
+  [[pointer image]]
   (let [listener (proxy [java.awt.event.MouseListener] []
                    (mouseClicked
                     [e]
@@ -27,7 +30,9 @@
       (.setSize (java.awt.Dimension. (.getWidth @image) (.getHeight @image)))
       (.setVisible true))))
 
-(defn circle [[pointer image] [x y r] color thickness]
+(defn circle
+  "Draws simple, thick or filled circle."
+  [[pointer image] [x y r] color thickness]
   (let [g (.getGraphics @image)]
     (.setColor g color)
   (if (pos? thickness)
@@ -36,13 +41,17 @@
       (.draw (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r))))
     (.fill g (java.awt.geom.Ellipse2D$Double. (- x r) (- y r) (* 2 r) (* 2 r))))))
 
-(defn line [[pointer image] [x1 y1] [x2 y2] color thickness]
+(defn line
+  "Draws simple or thick line segment."
+  [[pointer image] [x1 y1] [x2 y2] color thickness]
   (doto (.getGraphics @image)
     (.setColor color)
     (.setStroke (java.awt.BasicStroke. thickness))
     (.drawLine x1 y1 x2 y2)))
 
-(defn rectangle [[pointer image] x y width height color thickness]
+(defn rectangle
+  "Draws simple or thick rectangle."
+  [[pointer image] x y width height color thickness]
   (let [g (.getGraphics @image)]
     (.setColor g color)
   (if (pos? thickness)
@@ -51,7 +60,9 @@
       (.drawRect x y width height))
     (.fillRect x y width height))))
 
-(defn view [[pointer image]]
+(defn view
+  "Displays the image in a frame."
+  [[pointer image]]
   (doto (javax.swing.JFrame.)
     (.add (image-panel @image))
     (.setAlwaysOnTop true)
