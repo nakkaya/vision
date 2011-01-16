@@ -79,7 +79,7 @@
   (if-let[ref (.invoke (function "bounding_rect") com.sun.jna.ptr.IntByReference (to-array [i]))]
     (let [pointer (.getPointer ref)
           count (.getInt pointer 0)
-          rects (partition 4 (seq (drop 1 (.getIntArray pointer 0 (inc (* 3 count))))))]
+          rects (partition 4 (seq (drop 1 (.getIntArray pointer 0 (inc (* 4 count))))))]
       (release-memory ref)
       rects)
     []))
