@@ -281,3 +281,18 @@ void* smooth(void* i, int mode, int param1, int param2, int param3, int param4){
 
   return (void*)ret;
 }
+
+void* abs_diff(void* i1, void* i2){
+  IplImage* src1 = (IplImage*)i1;
+  IplImage* src2 = (IplImage*)i2;
+  IplImage* diff = cvCreateImage(cvGetSize((IplImage*)src1), src1->depth, src1->nChannels);
+
+  cvAbsDiff(src1, src2, diff);
+
+  return (void*)diff;
+}
+
+void* clone_image(void* i){
+  IplImage* src = (IplImage*)i;
+  return (void*)cvCloneImage(src);
+}

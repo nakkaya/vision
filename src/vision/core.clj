@@ -132,3 +132,11 @@
                                         :default (throw (Exception. "Unknown Convertion.")))
                                 p1 p2 p3 p4]))]
     [ref (buffered-image ref t) t]))
+
+(defn abs-diff [[p1 _ t] [p2 _ _]]
+  (let [ref (.invoke (function "abs_diff") Pointer (to-array [p1 p2]))]
+    [ref (buffered-image ref t) t]))
+
+(defn clone-image [[p _ t]]
+  (let [ref (.invoke (function "clone_image") Pointer (to-array [p]))]
+    [ref (buffered-image ref t) t]))
