@@ -15,6 +15,7 @@ int* image_size(void* m){
 // 2 - BINARY
 // 3 - HSV
 // 4 - RGB
+// 5 - GRAYSCALE
 int* pixels(void* m, int type){
   IplImage* img = (IplImage*)m;
 
@@ -32,6 +33,12 @@ int* pixels(void* m, int type){
   }else if(type == 4){
     IplImage* tmp = cvCreateImage(cvGetSize((IplImage*)img), img->depth, img->nChannels);
     cvCvtColor(img, tmp, CV_RGB2BGR);
+    img = tmp;
+    release = 1;
+    type = 1;
+  }else if(type == 5){
+    IplImage* tmp = cvCreateImage(cvGetSize((IplImage*)img), img->depth, 3);
+    cvCvtColor(img, tmp, CV_GRAY2BGR);
     img = tmp;
     release = 1;
     type = 1;

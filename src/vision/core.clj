@@ -46,8 +46,11 @@
 (defn load-image [f c]
   (let [ref (.invoke (function "load_image") Pointer (to-array [f (cond (= c :color) 1
                                                                         (= c :grayscale) 0
-                                                                        (= c :unchanged) -1)]))]
-    [ref (buffered-image ref 1) 1]))
+                                                                        (= c :unchanged) -1)]))
+        type (cond (= c :color) 1
+                   (= c :grayscale) 5
+                   (= c :unchanged) 1)]
+    [ref (buffered-image ref type) type]))
 
 (defn release-image [[p _]]
   (.invoke (function "release_image") (to-array [p])))
