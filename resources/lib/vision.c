@@ -246,7 +246,7 @@ double match_shapes(void* i1, void* i2, int mode){
 
 void* convert_color(void* i, int mode){
   IplImage* image = (IplImage*)i;
-  IplImage* converted = cvCreateImage(cvGetSize((IplImage*)image), image->depth, image->nChannels);
+  IplImage* converted;
   
   if(mode == 1)
     mode = CV_RGB2HSV;
@@ -256,6 +256,15 @@ void* convert_color(void* i, int mode){
     mode = CV_BGR2HSV;
   else if (mode == 4)
     mode = CV_HSV2BGR;
+  else if (mode == 5)
+    mode = CV_BGR2GRAY;
+  else if (mode == 6)
+    mode = CV_GRAY2BGR;
+
+  if(mode == 5 || mode == 6)
+    converted = cvCreateImage(cvGetSize((IplImage*)image), IPL_DEPTH_8U, 1);
+  else
+    converted = cvCreateImage(cvGetSize((IplImage*)image), image->depth, image->nChannels);
 
   cvCvtColor(image, converted, mode);  
 
@@ -302,4 +311,24 @@ void* abs_diff(void* i1, void* i2){
 void* clone_image(void* i){
   IplImage* src = (IplImage*)i;
   return (void*)cvCloneImage(src);
+}
+
+void* threshold(void* i, double th, double maxVal, int type){
+  IplImage* src = (IplImage*)i;
+
+  if(type == 1)
+    type = CV_THRESH_BINARY;
+  else if (type == 2)
+    type = CV_THRESH_BINARY_INV;
+  else if (type == 3)
+    type = CV_THRESH_TRUNC;
+  else if (type == 4)
+    type = CV_THRESH_TOZERO;
+  else if (type == 5)
+    type = CV_THRESH_TOZERO_INV;
+
+  IplImage* binary = cvCreateImage(cvGetSize(src),IPL_DEPTH_8U,1);
+  cvThreshold(src, binary, th, maxVal, type);
+
+  return (void*)binary;
 }

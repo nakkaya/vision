@@ -122,11 +122,15 @@
                                         (= m :hsv-rgb) 2
                                         (= m :bgr-hsv) 3
                                         (= m :hsv-bgr) 4
+                                        (= m :bgr-gray) 5
+                                        (= m :gray-bgr) 6
                                         :default (throw (Exception. "Unknown Convertion.")))]))
         type (cond (= m :rgb-hsv) 3
                    (= m :hsv-rgb) 4
                    (= m :bgr-hsv) 3
-                   (= m :hsv-bgr) 1)]
+                   (= m :hsv-bgr) 1
+                   (= m :bgr-gray) 5
+                   (= m :gray-bgr) 1)]
     [ref (buffered-image ref type) type]))
 
 (defn smooth [[p _ t] m p1 p2 p3 p4]
@@ -147,3 +151,22 @@
 (defn clone-image [[p _ t]]
   (let [ref (.invoke (function "clone_image") Pointer (to-array [p]))]
     [ref (buffered-image ref t) t]))
+
+(defn threshold
+  "Applies fixed-level threshold to an image.
+   threshold
+     Threshold value.
+   max-val
+     Maximum value to use with :binary, :binary-inv, and :trunc thresholding types.
+   thresholdType
+     Thresholding type (see the cvThreshold)"
+  [[p _] threshold max-val type]
+  (let [ref (.invoke (function "threshold") Pointer
+                     (to-array [p (double threshold) (double max-val)
+                                (cond (= type :binary) 1
+                                      (= type :binary-inv) 2
+                                      (= type :trunc) 3
+                                      (= type :to-zero) 4
+                                      (= type :to-zero-inv) 5
+                                      :default (throw (Exception. "Unknown Type.")))]))]
+    [ref (buffered-image ref 2) 2]))
