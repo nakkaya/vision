@@ -60,11 +60,33 @@
       (.drawRect x y width height))
     (.fillRect x y width height))))
 
-(defn view
+(def *frames* (ref {}))
+
+(defn- image-panel [f]
+  (let [p (proxy [javax.swing.JPanel] []
+            (paintComponent [g] (.drawImage g (-> @*frames* f :image) 0 0 this))
+            (getPreferredSize [] (java.awt.Dimension.
+                                  (.getWidth (-> @*frames* f :image))
+                                  (.getHeight (-> @*frames* f :image)))))]
+    (add-watch *frames* (str f) (fn [k r o n] (.repaint p)))
+    p))
+
+(defn- window-adapter [f]
+  (proxy [java.awt.event.WindowAdapter] [] 
+    (windowClosing [e] (dosync (alter *frames* dissoc f)))))
+
+(defn- image-frame [f]
+  (let [frame (doto (javax.swing.JFrame. (str f))
+                (.add (image-panel f))
+                (.setAlwaysOnTop true)
+                (.pack)
+                (.addWindowListener (window-adapter f))
+                (.setVisible true))]
+    (dosync (alter *frames* assoc-in [f :frame] frame))))
+
+(defn show-image
   "Displays the image in a frame."
-  [[pointer image]]
-  (doto (javax.swing.JFrame.)
-    (.add (image-panel @image))
-    (.setAlwaysOnTop true)
-    (.setSize (java.awt.Dimension. (.getWidth @image) (.getHeight @image)))
-    (.setVisible true)))
+  [f [_ i]]
+  (dosync (alter *frames* assoc-in [f :image] @i))  
+  (when (nil? (-> @*frames* f :frame))
+    (image-frame f)))
