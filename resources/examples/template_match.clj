@@ -6,4 +6,4 @@
       [width height] (image-size template)
       [min max min-x min-y max-x max-y] (match-template raw template :ccorr-normed)]
   (rectangle raw max-x max-y width height java.awt.Color/red 2)
-  (view raw))
+  (show-image :result raw))

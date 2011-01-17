@@ -7,4 +7,4 @@
                                 (smooth :gaussian 3 3 0 0)
                                 (bounding-rect))]
   (rectangle image x y width height java.awt.Color/red 4)
-  (view image))
+  (show-image :result image))

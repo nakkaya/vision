@@ -44,4 +44,4 @@
   (circle image (concat (id-10 blue pink) [20]) java.awt.Color/red -1)
   (circle image (concat (id-09 blue pink) [20]) java.awt.Color/red -1)
   
-  (view image))
+  (show-image :result image))
