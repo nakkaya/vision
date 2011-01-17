@@ -332,3 +332,44 @@ void* threshold(void* i, double th, double maxVal, int type){
 
   return (void*)binary;
 }
+
+void* load_cascade(char* f){
+  return (void*)cvLoad(f, 0, 0, 0 );
+}
+
+int* haar_detect_objects(void* i, void* c, 
+                         double scale_factor, int min_neighbors, int flags, int min_w, int min_h){
+  IplImage* image = (IplImage*)i;
+  CvHaarClassifierCascade* cascade = (CvHaarClassifierCascade*)c;
+
+  CvMemStorage* storage = cvCreateMemStorage(0);
+  cvClearMemStorage(storage);
+
+  if(flags == 1)
+    flags = CV_HAAR_DO_CANNY_PRUNING;
+
+  CvSeq* objs = cvHaarDetectObjects(image, cascade, 
+                                    storage, scale_factor, min_neighbors, flags, cvSize(min_w, min_h));
+
+  if(objs->total == 0){
+    cvReleaseMemStorage(&storage);
+    return NULL;
+  }
+
+  int* coords = malloc((1 + 4 * objs->total) * sizeof(int));
+  coords[0] = objs->total;
+  
+  int k = 1;
+  int m;
+  for(m=0; m < objs->total; m++, k+=4){
+    CvRect* r = (CvRect*)cvGetSeqElem(objs, m);
+      
+    coords[k] = r->x;
+    coords[k+1] = r->y;
+    coords[k+2] = r->width;
+    coords[k+3] = r->height;
+  }
+
+  cvReleaseMemStorage(&storage);  
+  return coords;
+}

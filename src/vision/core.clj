@@ -219,3 +219,34 @@
                                       (= type :to-zero-inv) 5
                                       :default (throw (Exception. "Unknown Type.")))]))]
     [ref (buffered-image ref 2) 2]))
+
+(defn load-cascade
+  "Load a HaarClassifierCascade."
+  [f]
+  (if-let[ref (.invoke (function "load_cascade") Pointer (to-array [f]))]
+    ref nil))
+
+(defn haar-detect-objects
+  "Detects objects in the image.
+  [i _]
+   Image to detect objects in.
+  cascade
+   Haar classifier cascade in internal representation.
+  scale-factor
+   The factor by which the search window is scaled between the subsequent scans.
+  min-neighbors
+   Minimum number (minus 1) of neighbor rectangles that makes up an object.
+  flags
+   Mode of operation. Currently the only flag that may be specified is :haar-do-canny-prunning.
+  [min-w min-h]
+   Minimum window size."
+  [[i _] cascade scale-factor min-neighbors flag [min-w min-h]]
+  (if-let[ref (.invoke (function "haar_detect_objects")
+                       com.sun.jna.ptr.IntByReference
+                       (to-array [i cascade (double scale-factor) min-neighbors 1 min-w min-h]))]
+    (let [pointer (.getPointer ref)
+          count (.getInt pointer 0)
+          rects (partition 4 (seq (drop 1 (.getIntArray pointer 0 (inc (* 4 count))))))]
+      (release-memory ref)
+      rects)
+    []))
