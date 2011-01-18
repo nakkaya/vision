@@ -1,6 +1,7 @@
 (ns vision.core
- (:import (com.sun.jna Function Pointer)))
-  
+  (:import (com.sun.jna Function Pointer)
+           (com.sun.jna.ptr IntByReference FloatByReference)))
+
 (System/setProperty "jna.library.path" "./resources/lib/")
 
 (defmacro -->
@@ -11,23 +12,25 @@
                next#))
   ([x form & more] `(--> (--> ~x ~form) ~@more)))
 
-(defn function [f]
- (Function/getFunction "vision" f))
+(defmacro call [f arg & args]
+  (if (empty? args)
+    `(.invoke (Function/getFunction "vision" (name ~f)) (to-array ~arg))
+    `(.invoke (Function/getFunction "vision" (name ~f)) ~arg (to-array ~@args))))
 
 (defn- release-memory [p]
-  (.invoke (function "release_memory") (to-array [p])))
+  (call :release_memory [p]))
 
 (defn image-size
   "Get image width, height."
   [[p _]]
-  (let [ref (.invoke (function "image_size") com.sun.jna.ptr.IntByReference (to-array [p]))
+  (let [ref (call :image_size IntByReference [p])
         pointer (.getPointer ref)
         info (seq (.getIntArray pointer 0 2))]
     (release-memory ref)
     info))
 
 (defn- pixels [p t]
-  (let [ref (.invoke (function "pixels") com.sun.jna.ptr.IntByReference (to-array [p t]))
+  (let [ref (call :pixels IntByReference [p t])
         pointer (.getPointer ref)
         [width height] (image-size [p])
         pxs (.getIntArray pointer 0 (* width height))]
@@ -50,11 +53,10 @@
    c
     :color, :grayscale, :unchanged"
   [f c]
-  (let [ref (.invoke (function "load_image") Pointer
-                     (to-array [f (cond (= c :color) 1
-                                        (= c :grayscale) 0
-                                        (= c :unchanged) -1
-                                        :default (throw (Exception. "Unknown Type.")))]))
+  (let [ref (call :load_image Pointer [f (cond (= c :color) 1
+                                                 (= c :grayscale) 0
+                                                 (= c :unchanged) -1
+                                                 :default (throw (Exception. "Unknown Type.")))])
         type (cond (= c :color) 1
                    (= c :grayscale) 5
                    (= c :unchanged) 1)]
@@ -63,35 +65,33 @@
 (defn release-image
   "Release allocated image."
   [[p _]]
-  (.invoke (function "release_image") (to-array [p])))
+  (call :release_image [p]))
 
 (defn save-image
   "Saves an image to the file."
   [[p _] f]
-  (.invoke (function "save_image") (to-array [p f])))
+  (call :save_image [p f]))
 
 (defn capture-from-cam
   "Allocates CvCapture structure and  binds it to the video camera."
   [n]
-  (.invoke (function "capture_from_cam") Pointer (to-array [n])))
-  
+  (call :capture_from_cam Pointer [n]))
+
 (defn query-frame
   "Grabs and returns a frame from camera or file."
   [c]
-  (let [ref (.invoke (function "query_frame") Pointer (to-array [c]))]
+  (let [ref (call :query_frame Pointer [c])]
     [ref (buffered-image ref 1) 1]))
 
 (defn release-capture
   "Releases the CvCapture structure."
   [c]
-  (.invoke (function "release_capture") (to-array [c])))
+  (call :release_capture [c]))
 
 (defn hough-circles
   "Finds circles in grayscale image using some modification of Hough transform."
   [[i _] dp min_d p1 p2 min-r max-r]
-  (if-let[ref (.invoke (function "hough_circles")
-                       com.sun.jna.ptr.FloatByReference
-                       (to-array [i dp min_d p1 p2 min-r max-r]))]
+  (if-let[ref (call :hough_circles FloatByReference [i dp min_d p1 p2 min-r max-r])]
     (let [pointer (.getPointer ref)
           count (.getFloat pointer 0)
           circles (partition 3 (seq (drop 1 (.getFloatArray pointer 0 (inc (* 3 count))))))]
@@ -102,7 +102,7 @@
 (defn bounding-rect
   "Calls cvFindContours on the image then iterates through seq returned, calling cvBoundingRect on each."
   [[i _]]
-  (if-let[ref (.invoke (function "bounding_rect") com.sun.jna.ptr.IntByReference (to-array [i]))]
+  (if-let[ref (call :bounding_rect IntByReference [i])]
     (let [pointer (.getPointer ref)
           count (.getInt pointer 0)
           rects (partition 4 (seq (drop 1 (.getIntArray pointer 0 (inc (* 4 count))))))]
@@ -122,9 +122,7 @@
                           (= :ccoeff calculation) 5
                           (= :ccoeff-normed calculation) 6
                           :default (throw (Exception. "Unknown Calculation.")))
-        ref (.invoke (function "match_template")
-                     com.sun.jna.ptr.FloatByReference
-                     (to-array [image template calculation]))
+        ref (call :match_template FloatByReference [image template calculation])
         pointer (.getPointer ref)
         vals (.getIntArray pointer 0 6)]
     (release-memory ref)
@@ -139,12 +137,12 @@
                           (= :i2 calculation) 2
                           (= :i3 calculation) 3
                           :default (throw (Exception. "Unknown Calculation.")))]
-    (.invoke (function "match_shapes") Double (to-array [img1 img2 calculation]))))
+    (call :match_shapes Double [img1 img2 calculation])))
 
 (defn in-range-s
   "Checks that image elements lie between two scalars."
   [[p _] [s11 s12 s13 s14] [s21 s22 s23 s24]]
-  (let [ref (.invoke (function "in_range_s") Pointer (to-array [p s11 s12 s13 s14 s21 s22 s23 s24]))]
+  (let [ref (call :in_range_s Pointer [p s11 s12 s13 s14 s21 s22 s23 s24])]
     [ref (buffered-image ref 2) 2]))
 
 (defn convert-color
@@ -152,14 +150,13 @@
    m
     :rgb-hsv, :hsv-rgb, :bgr-hsv, :hsv-bgr, :bgr-gray, :gray-bgr"
   [[p _] m]
-  (let [ref (.invoke (function "convert_color") Pointer
-                     (to-array [p (cond (= m :rgb-hsv) 1
-                                        (= m :hsv-rgb) 2
-                                        (= m :bgr-hsv) 3
-                                        (= m :hsv-bgr) 4
-                                        (= m :bgr-gray) 5
-                                        (= m :gray-bgr) 6
-                                        :default (throw (Exception. "Unknown Convertion.")))]))
+  (let [ref (call :convert_color Pointer [p (cond (= m :rgb-hsv) 1
+                                                    (= m :hsv-rgb) 2
+                                                    (= m :bgr-hsv) 3
+                                                    (= m :hsv-bgr) 4
+                                                    (= m :bgr-gray) 5
+                                                    (= m :gray-bgr) 6
+                                                    :default (throw (Exception. "Unknown Convertion.")))])
         type (cond (= m :rgb-hsv) 3
                    (= m :hsv-rgb) 4
                    (= m :bgr-hsv) 3
@@ -179,26 +176,25 @@
    p3
      Gaussian"
   [[p _ t] m p1 p2 p3 p4]
-  (let [ref (.invoke (function "smooth") Pointer
-                     (to-array [p (cond (= m :blur-no-scale) 1
-                                        (= m :blur) 2
-                                        (= m :gaussian) 3
-                                        (= m :median) 4
-                                        (= m :bilateral) 5
-                                        :default (throw (Exception. "Unknown Convertion.")))
-                                p1 p2 p3 p4]))]
+  (let [ref (call :smooth Pointer [p (cond (= m :blur-no-scale) 1
+                                             (= m :blur) 2
+                                             (= m :gaussian) 3
+                                             (= m :median) 4
+                                             (= m :bilateral) 5
+                                             :default (throw (Exception. "Unknown Convertion.")))
+                                     p1 p2 p3 p4])]
     [ref (buffered-image ref t) t]))
 
 (defn abs-diff
   "Calculates absolute difference between two images."
   [[p1 _ t] [p2 _ _]]
-  (let [ref (.invoke (function "abs_diff") Pointer (to-array [p1 p2]))]
+  (let [ref (call :abs_diff Pointer [p1 p2])]
     [ref (buffered-image ref t) t]))
 
 (defn clone-image
   "Makes a full clone of the image (e.g., a duplicate full size image with its own matching ROI attached)"
   [[p _ t]]
-  (let [ref (.invoke (function "clone_image") Pointer (to-array [p]))]
+  (let [ref (call :clone_image Pointer [p])]
     [ref (buffered-image ref t) t]))
 
 (defn threshold
@@ -210,20 +206,19 @@
    thresholdType
      Thresholding type (see the cvThreshold)"
   [[p _] threshold max-val type]
-  (let [ref (.invoke (function "threshold") Pointer
-                     (to-array [p (double threshold) (double max-val)
-                                (cond (= type :binary) 1
-                                      (= type :binary-inv) 2
-                                      (= type :trunc) 3
-                                      (= type :to-zero) 4
-                                      (= type :to-zero-inv) 5
-                                      :default (throw (Exception. "Unknown Type.")))]))]
+  (let [ref (call :threshold Pointer [p (double threshold) (double max-val)
+                                        (cond (= type :binary) 1
+                                              (= type :binary-inv) 2
+                                              (= type :trunc) 3
+                                              (= type :to-zero) 4
+                                              (= type :to-zero-inv) 5
+                                              :default (throw (Exception. "Unknown Type.")))])]
     [ref (buffered-image ref 2) 2]))
 
 (defn load-cascade
   "Load a HaarClassifierCascade."
   [f]
-  (if-let[ref (.invoke (function "load_cascade") Pointer (to-array [f]))]
+  (if-let[ref (call :load_cascade Pointer [f])]
     ref nil))
 
 (defn haar-detect-objects
@@ -241,9 +236,8 @@
   [min-w min-h]
    Minimum window size."
   [[i _] cascade scale-factor min-neighbors flag [min-w min-h]]
-  (if-let[ref (.invoke (function "haar_detect_objects")
-                       com.sun.jna.ptr.IntByReference
-                       (to-array [i cascade (double scale-factor) min-neighbors 1 min-w min-h]))]
+  (if-let[ref (call :haar_detect_objects IntByReference
+                      [i cascade (double scale-factor) min-neighbors 1 min-w min-h])]
     (let [pointer (.getPointer ref)
           count (.getInt pointer 0)
           rects (partition 4 (seq (drop 1 (.getIntArray pointer 0 (inc (* 4 count))))))]
