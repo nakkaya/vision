@@ -53,10 +53,11 @@
    c
     :color, :grayscale, :unchanged"
   [f c]
+  {:pre  [(.exists (java.io.File. f))]}
   (let [ref (call :load_image Pointer [f (cond (= c :color) 1
-                                                 (= c :grayscale) 0
-                                                 (= c :unchanged) -1
-                                                 :default (throw (Exception. "Unknown Type.")))])
+                                               (= c :grayscale) 0
+                                               (= c :unchanged) -1
+                                               :default (throw (Exception. "Unknown Type.")))])
         type (cond (= c :color) 1
                    (= c :grayscale) 5
                    (= c :unchanged) 1)]
@@ -218,6 +219,7 @@
 (defn load-cascade
   "Load a HaarClassifierCascade."
   [f]
+  {:pre  [(.exists (java.io.File. f))]}
   (if-let[ref (call :load_cascade Pointer [f])]
     ref nil))
 
