@@ -5,6 +5,8 @@
 (System/setProperty "jna.library.path" "./resources/lib/")
 
 (defmacro -->
+  "Threads images through the forms. Passing images from call to call and relasing
+   all but the last image."
   ([x] x)
   ([x form] `(let [img# ~x
                    next# (~(first form) img# ~@(next form))]
