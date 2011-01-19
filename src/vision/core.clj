@@ -1,4 +1,5 @@
 (ns vision.core
+  (:use [clojure.contrib.def :only [defmacro-]])
   (:import (com.sun.jna Function Pointer)
            (com.sun.jna.ptr IntByReference FloatByReference)))
 
@@ -14,12 +15,12 @@
                next#))
   ([x form & more] `(--> (--> ~x ~form) ~@more)))
 
-(defmacro call [f arg & args]
+(defmacro- call [f arg & args]
   (if (empty? args)
     `(.invoke (Function/getFunction "vision" (name ~f)) (to-array ~arg))
     `(.invoke (Function/getFunction "vision" (name ~f)) ~arg (to-array ~@args))))
 
-(defmacro with-pointer
+(defmacro- with-pointer
   [binding & body]
   {:pre  [(vector? binding) (= 2 (count binding))]}
   `(if-let [ref# ~(second binding)]
