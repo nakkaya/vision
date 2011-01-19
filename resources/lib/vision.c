@@ -409,3 +409,15 @@ int* bounding_rect(void* c){
 
   return coords;
 }
+
+void* erode(void* i, int iterations){
+  IplImage* out = cvCloneImage((IplImage*)i);
+  cvErode(out, out, 0, iterations);
+  return (void*)out;
+}
+
+void* dilate(void* i, int iterations){
+  IplImage* out = cvCloneImage((IplImage*)i);
+  cvDilate(out, out, 0, iterations);
+  return (void*)out;
+}

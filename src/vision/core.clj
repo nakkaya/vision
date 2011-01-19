@@ -271,3 +271,13 @@
   (with-pointer [p (call :bounding_rect IntByReference [contours])]
     (let [count (.getInt p 0)]
       (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
+
+(defn erode
+  "Erodes image by using arbitrary structuring element"
+  [{p :pointer t :color-space} iterations]
+  (ipl-image (call :erode Pointer [p iterations]) t))
+
+(defn dilate
+  "Dilates image by using arbitrary structuring element"
+  [{p :pointer t :color-space} iterations]
+  (ipl-image (call :dilate Pointer [p iterations]) t))
