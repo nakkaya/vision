@@ -5,6 +5,11 @@
 
 (System/setProperty "jna.library.path" "./resources/lib/")
 
+
+(defrecord IplImage [#^Pointer pointer
+                     #^clojure.lang.Keyword color-space
+                     #^java.awt.image.BufferedImage buffered-image])
+
 (defmacro -->
   "Threads images through the forms. Passing images from call to call and relasing
    all but the last image."
@@ -55,6 +60,20 @@
        width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
       false nil))))
 
+(defn- ipl-image [ref cs]
+  (let [type (cond (= cs :color) 1
+                   (= cs :unchanged) 1
+                   (= cs :binary) 2
+                   (= cs :grayscale) 5
+                   (= cs :rgb-hsv) 3
+                   (= cs :hsv-rgb) 4
+                   (= cs :bgr-hsv) 3
+                   (= cs :hsv-bgr) 1
+                   (= cs :bgr-gray) 5
+                   (= cs :gray-bgr) 1
+                   :default cs)]
+    (IplImage. ref type (buffered-image ref type))))
+
 (defn load-image
   "Loads an image from file
    c
@@ -64,20 +83,17 @@
   (let [ref (call :load_image Pointer [f (cond (= c :color) 1
                                                (= c :grayscale) 0
                                                (= c :unchanged) -1
-                                               :default (throw (Exception. "Unknown Type.")))])
-        type (cond (= c :color) 1
-                   (= c :grayscale) 5
-                   (= c :unchanged) 1)]
-    [ref (buffered-image ref type) type]))
+                                               :default (throw (Exception. "Unknown Type.")))])]
+    (ipl-image ref type)))
 
 (defn release-image
   "Release allocated image."
-  [[p _]]
+  [{p :pointer}]
   (call :release_image [p]))
 
 (defn save-image
   "Saves an image to the file."
-  [[p _] f]
+  [{p :pointer} f]
   (call :save_image [p f]))
 
 (defn capture-from-cam
@@ -88,8 +104,7 @@
 (defn query-frame
   "Grabs and returns a frame from camera or file."
   [c]
-  (let [ref (call :query_frame Pointer [c])]
-    [ref (buffered-image ref 1) 1]))
+  (ipl-image (call :query_frame Pointer [c]) :color))
 
 (defn release-capture
   "Releases the CvCapture structure."
@@ -98,14 +113,14 @@
 
 (defn hough-circles
   "Finds circles in grayscale image using some modification of Hough transform."
-  [[i _] dp min_d p1 p2 min-r max-r]
+  [{i :pointer} dp min_d p1 p2 min-r max-r]
   (with-pointer [p (call :hough_circles FloatByReference [i dp min_d p1 p2 min-r max-r])]
     (let [count (.getFloat p 0)]
       (partition 3 (seq (drop 1 (.getFloatArray p 0 (inc (* 3 count)))))))))
 
 (defn bounding-rect
   "Calls cvFindContours on the image then iterates through seq returned, calling cvBoundingRect on each."
-  [[i _]]
+  [{i :pointer}]
   (with-pointer [p (call :bounding_rect IntByReference [i])]
     (let [count (.getInt p 0)]
       (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
@@ -114,7 +129,7 @@
   "Compares template against overlapped image regions.
    calculation
     :sqdiff, :sqdiff-normed, :ccorr, :ccorr-normed, :ccoeff, :ccoeff-normed"
-  [[image _] [template _] calculation]
+  [{image :pointer} {template :pointer} calculation]
   (with-pointer [p (call :match_template FloatByReference
                          [image template (cond (= :sqdiff calculation) 1
                                                (= :sqdiff-normed calculation) 2
@@ -129,7 +144,7 @@
   "Compares two shapes.
    calculation
     :i1, :i2, :i3"
-  [[img1 _] [img2 _] calculation]
+  [{img1 :pointer} {img2 :pointer} calculation]
   (let [calculation (cond (= :i1 calculation) 1
                           (= :i2 calculation) 2
                           (= :i3 calculation) 3
@@ -138,29 +153,21 @@
 
 (defn in-range-s
   "Checks that image elements lie between two scalars."
-  [[p _] [s11 s12 s13 s14] [s21 s22 s23 s24]]
-  (let [ref (call :in_range_s Pointer [p s11 s12 s13 s14 s21 s22 s23 s24])]
-    [ref (buffered-image ref 2) 2]))
+  [{p :pointer} [s11 s12 s13 s14] [s21 s22 s23 s24]]
+  (ipl-image (call :in_range_s Pointer [p s11 s12 s13 s14 s21 s22 s23 s24]) :binary))
 
 (defn convert-color
   "Converts image from one color space to another.
    m
     :rgb-hsv, :hsv-rgb, :bgr-hsv, :hsv-bgr, :bgr-gray, :gray-bgr"
-  [[p _] m]
-  (let [ref (call :convert_color Pointer [p (cond (= m :rgb-hsv) 1
-                                                    (= m :hsv-rgb) 2
-                                                    (= m :bgr-hsv) 3
-                                                    (= m :hsv-bgr) 4
-                                                    (= m :bgr-gray) 5
-                                                    (= m :gray-bgr) 6
-                                                    :default (throw (Exception. "Unknown Convertion.")))])
-        type (cond (= m :rgb-hsv) 3
-                   (= m :hsv-rgb) 4
-                   (= m :bgr-hsv) 3
-                   (= m :hsv-bgr) 1
-                   (= m :bgr-gray) 5
-                   (= m :gray-bgr) 1)]
-    [ref (buffered-image ref type) type]))
+  [{p :pointer} m]
+  (ipl-image (call :convert_color Pointer [p (cond (= m :rgb-hsv) 1
+                                                   (= m :hsv-rgb) 2
+                                                   (= m :bgr-hsv) 3
+                                                   (= m :hsv-bgr) 4
+                                                   (= m :bgr-gray) 5
+                                                   (= m :gray-bgr) 6
+                                                   :default (throw (Exception. "Unknown Convertion.")))]) m))
 
 (defn smooth
   "Smooths the image in one of several ways.
@@ -172,27 +179,24 @@
      The aperture height.
    p3
      Gaussian"
-  [[p _ t] m p1 p2 p3 p4]
-  (let [ref (call :smooth Pointer [p (cond (= m :blur-no-scale) 1
-                                             (= m :blur) 2
-                                             (= m :gaussian) 3
-                                             (= m :median) 4
-                                             (= m :bilateral) 5
-                                             :default (throw (Exception. "Unknown Convertion.")))
-                                     p1 p2 p3 p4])]
-    [ref (buffered-image ref t) t]))
+  [{p :pointer t :type} m p1 p2 p3 p4]
+  (ipl-image (call :smooth Pointer [p (cond (= m :blur-no-scale) 1
+                                            (= m :blur) 2
+                                            (= m :gaussian) 3
+                                            (= m :median) 4
+                                            (= m :bilateral) 5
+                                            :default (throw (Exception. "Unknown Convertion.")))
+                                    p1 p2 p3 p4]) t))
 
 (defn abs-diff
   "Calculates absolute difference between two images."
-  [[p1 _ t] [p2 _ _]]
-  (let [ref (call :abs_diff Pointer [p1 p2])]
-    [ref (buffered-image ref t) t]))
+  [{p1 :pointer t :type} {p2 :pointer}]
+  (ipl-image (call :abs_diff Pointer [p1 p2]) t))
 
 (defn clone-image
   "Makes a full clone of the image (e.g., a duplicate full size image with its own matching ROI attached)"
-  [[p _ t]]
-  (let [ref (call :clone_image Pointer [p])]
-    [ref (buffered-image ref t) t]))
+  [{p :pointer t :type}]
+  (ipl-image (call :clone_image Pointer [p]) t))
 
 (defn threshold
   "Applies fixed-level threshold to an image.
@@ -202,15 +206,14 @@
      Maximum value to use with :binary, :binary-inv, and :trunc thresholding types.
    thresholdType
      Thresholding type (see the cvThreshold)"
-  [[p _] threshold max-val type]
-  (let [ref (call :threshold Pointer [p (double threshold) (double max-val)
-                                        (cond (= type :binary) 1
-                                              (= type :binary-inv) 2
-                                              (= type :trunc) 3
-                                              (= type :to-zero) 4
-                                              (= type :to-zero-inv) 5
-                                              :default (throw (Exception. "Unknown Type.")))])]
-    [ref (buffered-image ref 2) 2]))
+  [{p :pointer} threshold max-val type]
+  (ipl-image (call :threshold Pointer [p (double threshold) (double max-val)
+                                       (cond (= type :binary) 1
+                                             (= type :binary-inv) 2
+                                             (= type :trunc) 3
+                                             (= type :to-zero) 4
+                                             (= type :to-zero-inv) 5
+                                             :default (throw (Exception. "Unknown Type.")))]) 2))
 
 (defn load-cascade
   "Load a HaarClassifierCascade."
@@ -232,7 +235,7 @@
    Mode of operation. Currently the only flag that may be specified is :haar-do-canny-prunning.
   [min-w min-h]
    Minimum window size."
-  [[i _] cascade scale-factor min-neighbors flag [min-w min-h]]
+  [{i :pointer} cascade scale-factor min-neighbors flag [min-w min-h]]
   (with-pointer [p (call :haar_detect_objects IntByReference
                          [i cascade (double scale-factor) min-neighbors 1 min-w min-h])]
     (let [count (.getInt p 0)]

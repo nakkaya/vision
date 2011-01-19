@@ -8,7 +8,7 @@
 (defn color-picker
   "Displays the image in a frame with a mouse listener attached that will
    print the HSV values for the pixels clicked."
-  [[pointer image]]
+  [{image :buffered-image}]
   (let [listener (proxy [java.awt.event.MouseListener] []
                    (mouseClicked
                     [e]
@@ -32,7 +32,7 @@
 
 (defn circle
   "Draws simple, thick or filled circle."
-  [[pointer image] [x y r] color thickness]
+  [{image :buffered-image} [x y r] color thickness]
   (let [g (.getGraphics @image)]
     (.setColor g color)
   (if (pos? thickness)
@@ -43,7 +43,7 @@
 
 (defn line
   "Draws simple or thick line segment."
-  [[pointer image] [x1 y1] [x2 y2] color thickness]
+  [{image :buffered-image} [x1 y1] [x2 y2] color thickness]
   (doto (.getGraphics @image)
     (.setColor color)
     (.setStroke (java.awt.BasicStroke. thickness))
@@ -51,7 +51,7 @@
 
 (defn rectangle
   "Draws simple or thick rectangle."
-  [[pointer image] x y width height color thickness]
+  [{image :buffered-image} x y width height color thickness]
   (let [g (.getGraphics @image)]
     (.setColor g color)
   (if (pos? thickness)
@@ -86,7 +86,7 @@
 
 (defn show-image
   "Displays the image in a frame."
-  [f [_ i]]
+  [f {i :buffered-image}]
   (dosync (alter *frames* assoc-in [f :image] @i))  
   (when (nil? (-> @*frames* f :frame))
     (image-frame f)))
