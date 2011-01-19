@@ -19,25 +19,29 @@
     `(.invoke (Function/getFunction "vision" (name ~f)) (to-array ~arg))
     `(.invoke (Function/getFunction "vision" (name ~f)) ~arg (to-array ~@args))))
 
+(defmacro with-pointer
+  [binding & body]
+  {:pre  [(vector? binding) (= 2 (count binding))]}
+  `(if-let [ref# ~(second binding)]
+     (try
+       (let [~(first binding) (.getPointer ref#)]
+         ~@body)
+       (finally
+        (release-memory ref#)))))
+
 (defn- release-memory [p]
   (call :release_memory [p]))
 
 (defn image-size
   "Get image width, height."
   [[p _]]
-  (let [ref (call :image_size IntByReference [p])
-        pointer (.getPointer ref)
-        info (seq (.getIntArray pointer 0 2))]
-    (release-memory ref)
-    info))
+  (with-pointer [p (call :image_size IntByReference [p])]
+    (seq (.getIntArray p 0 2))))
 
 (defn- pixels [p t]
-  (let [ref (call :pixels IntByReference [p t])
-        pointer (.getPointer ref)
-        [width height] (image-size [p])
-        pxs (.getIntArray pointer 0 (* width height))]
-    (release-memory ref)
-    pxs))
+  (with-pointer [ptr (call :pixels IntByReference [p t])]
+    (let [[width height] (image-size [p])]
+      (.getIntArray ptr 0 (* width height)))))
 
 (defn- buffered-image [pxs t]
   (delay
@@ -94,42 +98,31 @@
 (defn hough-circles
   "Finds circles in grayscale image using some modification of Hough transform."
   [[i _] dp min_d p1 p2 min-r max-r]
-  (if-let[ref (call :hough_circles FloatByReference [i dp min_d p1 p2 min-r max-r])]
-    (let [pointer (.getPointer ref)
-          count (.getFloat pointer 0)
-          circles (partition 3 (seq (drop 1 (.getFloatArray pointer 0 (inc (* 3 count))))))]
-      (release-memory ref)
-      circles)
-    []))
+  (with-pointer [p (call :hough_circles FloatByReference [i dp min_d p1 p2 min-r max-r])]
+    (let [count (.getFloat p 0)]
+      (partition 3 (seq (drop 1 (.getFloatArray p 0 (inc (* 3 count)))))))))
 
 (defn bounding-rect
   "Calls cvFindContours on the image then iterates through seq returned, calling cvBoundingRect on each."
   [[i _]]
-  (if-let[ref (call :bounding_rect IntByReference [i])]
-    (let [pointer (.getPointer ref)
-          count (.getInt pointer 0)
-          rects (partition 4 (seq (drop 1 (.getIntArray pointer 0 (inc (* 4 count))))))]
-      (release-memory ref)
-      rects)
-    []))
+  (with-pointer [p (call :bounding_rect IntByReference [i])]
+    (let [count (.getInt p 0)]
+      (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
 
 (defn match-template
   "Compares template against overlapped image regions.
    calculation
     :sqdiff, :sqdiff-normed, :ccorr, :ccorr-normed, :ccoeff, :ccoeff-normed"
   [[image _] [template _] calculation]
-  (let [calculation (cond (= :sqdiff calculation) 1
-                          (= :sqdiff-normed calculation) 2
-                          (= :ccorr calculation) 3
-                          (= :ccorr-normed calculation) 4
-                          (= :ccoeff calculation) 5
-                          (= :ccoeff-normed calculation) 6
-                          :default (throw (Exception. "Unknown Calculation.")))
-        ref (call :match_template FloatByReference [image template calculation])
-        pointer (.getPointer ref)
-        vals (.getIntArray pointer 0 6)]
-    (release-memory ref)
-    vals))
+  (with-pointer [p (call :match_template FloatByReference
+                         [image template (cond (= :sqdiff calculation) 1
+                                               (= :sqdiff-normed calculation) 2
+                                               (= :ccorr calculation) 3
+                                               (= :ccorr-normed calculation) 4
+                                               (= :ccoeff calculation) 5
+                                               (= :ccoeff-normed calculation) 6
+                                               :default (throw (Exception. "Unknown Calculation.")))])]
+    (.getIntArray p 0 6)))
 
 (defn match-shapes
   "Compares two shapes.
@@ -222,8 +215,7 @@
   "Load a HaarClassifierCascade."
   [f]
   {:pre  [(.exists (java.io.File. f))]}
-  (if-let[ref (call :load_cascade Pointer [f])]
-    ref nil))
+  (call :load_cascade Pointer [f]))
 
 (defn haar-detect-objects
   "Detects objects in the image.
@@ -240,11 +232,7 @@
   [min-w min-h]
    Minimum window size."
   [[i _] cascade scale-factor min-neighbors flag [min-w min-h]]
-  (if-let[ref (call :haar_detect_objects IntByReference
-                      [i cascade (double scale-factor) min-neighbors 1 min-w min-h])]
-    (let [pointer (.getPointer ref)
-          count (.getInt pointer 0)
-          rects (partition 4 (seq (drop 1 (.getIntArray pointer 0 (inc (* 4 count))))))]
-      (release-memory ref)
-      rects)
-    []))
+  (with-pointer [p (call :haar_detect_objects IntByReference
+                         [i cascade (double scale-factor) min-neighbors 1 min-w min-h])]
+    (let [count (.getInt p 0)]
+      (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
