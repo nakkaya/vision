@@ -84,7 +84,7 @@
                                                (= c :grayscale) 0
                                                (= c :unchanged) -1
                                                :default (throw (Exception. "Unknown Type.")))])]
-    (ipl-image ref type)))
+    (ipl-image ref c)))
 
 (defn release-image
   "Release allocated image."
@@ -117,13 +117,6 @@
   (with-pointer [p (call :hough_circles FloatByReference [i dp min_d p1 p2 min-r max-r])]
     (let [count (.getFloat p 0)]
       (partition 3 (seq (drop 1 (.getFloatArray p 0 (inc (* 3 count)))))))))
-
-(defn bounding-rect
-  "Calls cvFindContours on the image then iterates through seq returned, calling cvBoundingRect on each."
-  [{i :pointer}]
-  (with-pointer [p (call :bounding_rect IntByReference [i])]
-    (let [count (.getInt p 0)]
-      (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
 
 (defn match-template
   "Compares template against overlapped image regions.
@@ -179,7 +172,7 @@
      The aperture height.
    p3
      Gaussian"
-  [{p :pointer t :type} m p1 p2 p3 p4]
+  [{p :pointer t :color-space} m p1 p2 p3 p4]
   (ipl-image (call :smooth Pointer [p (cond (= m :blur-no-scale) 1
                                             (= m :blur) 2
                                             (= m :gaussian) 3
@@ -190,12 +183,12 @@
 
 (defn abs-diff
   "Calculates absolute difference between two images."
-  [{p1 :pointer t :type} {p2 :pointer}]
+  [{p1 :pointer t :color-space} {p2 :pointer}]
   (ipl-image (call :abs_diff Pointer [p1 p2]) t))
 
 (defn clone-image
   "Makes a full clone of the image (e.g., a duplicate full size image with its own matching ROI attached)"
-  [{p :pointer t :type}]
+  [{p :pointer t :color-space}]
   (ipl-image (call :clone_image Pointer [p]) t))
 
 (defn threshold
@@ -238,5 +231,43 @@
   [{i :pointer} cascade scale-factor min-neighbors flag [min-w min-h]]
   (with-pointer [p (call :haar_detect_objects IntByReference
                          [i cascade (double scale-factor) min-neighbors 1 min-w min-h])]
+    (let [count (.getInt p 0)]
+      (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
+
+(defn find-contours [{image :pointer} mode method [x y]]
+  (let [mode (cond (= mode :external) 1
+                   (= mode :list) 2
+                   (= mode :ccomp) 3
+                   (= mode :tree) 4
+                   :default (throw (Exception. "Unknown Mode.")))
+        method (cond (= method :chain-code) 1
+                     (= method :chain-approx-none) 2
+                     (= method :chain-approx-simple) 3
+                     (= method :chain-approx-tc89-l1) 4
+                     (= method :chain-approx-tc89-kcos) 5
+                     (= method :link-runs) 6
+                     :default (throw (Exception. "Unknown Method.")))]
+    (call :find_contours Pointer [image mode method x y])))
+
+(defn release-contours [contours]
+  (call :release_contours [contours]))
+
+(defmacro with-contours
+  [bindings & body]
+  {:pre  [(vector? bindings) (even? (count bindings))]}
+  (cond
+   (= (count bindings) 0) `(do ~@body)
+   (symbol? (bindings 0)) `(let [~(first bindings) (find-contours ~@(second bindings))]
+                             (try
+                               (with-contours ~(subvec bindings 2) ~@body)
+                               (finally
+                                (release-contours ~(bindings 0)))))
+   :else (throw (IllegalArgumentException.
+                 "with-contours only allows Symbols in bindings"))))
+
+(defn bounding-rect
+  "Returns the up-right bounding rectangles for contours."
+  [contours]
+  (with-pointer [p (call :bounding_rect IntByReference [contours])]
     (let [count (.getInt p 0)]
       (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))

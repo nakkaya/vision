@@ -153,37 +153,6 @@ float* hough_circles(void* img, int dp, int min_d, int p1, int p2, int min_r, in
   return coords;
 }
 
-int* bounding_rect(void* m){
-  IplImage* image = (IplImage*)m;
-  CvSeq* boxes;
-  CvMemStorage* storage = cvCreateMemStorage(0);
-  cvClearMemStorage(storage);
-  
-  int total = cvFindContours(image, storage, &boxes, sizeof(CvContour),
-                             CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
-
-  if(total == 0){
-    cvReleaseMemStorage(&storage);
-    return NULL;
-  }
-  
-  int* coords = malloc((1 + 4 * total) * sizeof(int));
-  coords[0] = total;
-  
-  int k = 1;
-  for(; boxes; boxes= boxes->h_next, k+=4){
-    CvRect b = cvBoundingRect(boxes, 1);
-      
-    coords[k] = b.x;
-    coords[k+1] = b.y;
-    coords[k+2] = b.width;
-    coords[k+3] = b.height;
-  }
-
-  cvReleaseMemStorage(&storage);
-  return coords;
-}
-
 int* match_template(void* i, void* t, int mode){
   IplImage* image = (IplImage*)i;
   IplImage* template = (IplImage*)t;
@@ -371,5 +340,72 @@ int* haar_detect_objects(void* i, void* c,
   }
 
   cvReleaseMemStorage(&storage);  
+  return coords;
+}
+
+void* find_contours(void* m, int mode, int method, int x, int y){
+  IplImage* image = (IplImage*)m;
+  CvSeq* contours;
+  CvMemStorage* storage = cvCreateMemStorage(0);
+  cvClearMemStorage(storage);
+
+  switch(mode) {
+  case 1:
+    mode = CV_RETR_EXTERNAL; break;
+  case 2:
+    mode = CV_RETR_LIST; break;
+  case 3:
+    mode = CV_RETR_CCOMP; break;
+  case 4:
+    mode = CV_RETR_TREE; break;
+  }
+
+  switch(method) {
+  case 1:
+    method = CV_CHAIN_CODE; break;
+  case 2:
+    method = CV_CHAIN_APPROX_NONE; break;
+  case 3:
+    method = CV_CHAIN_APPROX_SIMPLE; break;
+  case 4:
+    method = CV_CHAIN_APPROX_TC89_L1; break;
+  case 5:
+    method = CV_CHAIN_APPROX_TC89_KCOS; break;
+  case 6:
+    method = CV_LINK_RUNS; break;
+  }
+
+  int size;
+  if(method == CV_CHAIN_CODE)
+    size = sizeof(CvChain);
+  else
+    size = sizeof(CvContour);
+
+  cvFindContours(image, storage, &contours, size, mode, method, cvPoint(x,y));
+  
+  return contours;
+}
+
+void release_contours(void* s){
+  CvSeq* seq = (CvSeq*)s;
+  cvReleaseMemStorage(&seq->storage);
+}
+
+int* bounding_rect(void* c){
+  CvSeq* contours = (CvSeq*)c;
+    
+  int* coords = malloc((1 + 4 * contours->total) * sizeof(int));
+  coords[0] = contours->total;
+  
+  int k = 1;
+  for(; contours; contours= contours->h_next, k+=4){
+    CvRect b = cvBoundingRect(contours, 1);
+      
+    coords[k] = b.x;
+    coords[k+1] = b.y;
+    coords[k+2] = b.width;
+    coords[k+3] = b.height;
+  }
+
   return coords;
 }
