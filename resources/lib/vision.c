@@ -393,9 +393,14 @@ void release_contours(void* s){
 
 int* bounding_rect(void* c){
   CvSeq* contours = (CvSeq*)c;
-    
-  int* coords = malloc((1 + 4 * contours->total) * sizeof(int));
-  coords[0] = contours->total;
+
+  int total = 0;
+  CvSeq* t = contours;
+  for(; t; t = t->h_next)
+    total++;
+
+  int* coords = malloc((1 + 4 * total) * sizeof(int));
+  coords[0] = total;
   
   int k = 1;
   for(; contours; contours= contours->h_next, k+=4){
