@@ -107,6 +107,12 @@
   [n]
   (call :capture_from_cam Pointer [n]))
 
+(defn capture-from-file
+  "Initializes capturing a video from a file."
+  [f]
+  {:pre  [(.exists (java.io.File. f))]}
+  (call :capture_from_file Pointer [f]))
+
 (defn query-frame
   "Grabs and returns a frame from camera or file."
   [c]

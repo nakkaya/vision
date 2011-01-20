@@ -91,6 +91,11 @@ void* capture_from_cam(int i){
   return (void*) ptr;
 }
 
+void* capture_from_file(char* f){
+  CvCapture* ptr = cvCaptureFromFile(f);  
+  return (void*) ptr;
+}
+
 void* query_frame(void* capture){
   return (void*)cvQueryFrame((CvCapture*)capture);
 }  
