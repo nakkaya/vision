@@ -113,6 +113,21 @@
   {:pre  [(.exists (java.io.File. f))]}
   (call :capture_from_file Pointer [f]))
 
+(defn get-capture-property [c p]
+  (call :get_capture_property Double [c (cond (= p :pos-msec) 1
+                                              (= p :pos-frames) 2
+                                              (= p :pos-avi-ratio) 3
+                                              (= p :frame-width) 4
+                                              (= p :frame-height) 5
+                                              (= p :fps) 6
+                                              (= p :fourcc) 7
+                                              (= p :frame-count) 8
+                                              (= p :brightness) 9
+                                              (= p :contrast) 10
+                                              (= p :saturation) 11
+                                              (= p :hue) 12
+                                              :default (throw (Exception. "Unknown Property.")))]))
+
 (defn query-frame
   "Grabs and returns a frame from camera or file."
   [c]

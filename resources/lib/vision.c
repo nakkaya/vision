@@ -96,6 +96,39 @@ void* capture_from_file(char* f){
   return (void*) ptr;
 }
 
+double get_capture_property(void* c, int prop){
+  CvCapture* capture = (CvCapture*)c;
+
+  switch(prop) {
+  case 1:
+    prop = CV_CAP_PROP_POS_MSEC; break;
+  case 2:
+    prop = CV_CAP_PROP_POS_FRAMES; break;
+  case 3:
+    prop = CV_CAP_PROP_POS_AVI_RATIO; break;
+  case 4:
+    prop = CV_CAP_PROP_FRAME_WIDTH; break;
+  case 5:
+    prop = CV_CAP_PROP_FRAME_HEIGHT; break;
+  case 6:
+    prop = CV_CAP_PROP_FPS; break;
+  case 7:
+    prop = CV_CAP_PROP_FOURCC; break;
+  case 8:
+    prop = CV_CAP_PROP_FRAME_COUNT; break;
+  case 9:
+    prop = CV_CAP_PROP_BRIGHTNESS; break;
+  case 10:
+    prop = CV_CAP_PROP_CONTRAST; break;
+  case 11:
+    prop = CV_CAP_PROP_SATURATION; break;
+  case 12:
+    prop = CV_CAP_PROP_HUE; break;
+  }
+
+  return cvGetCaptureProperty(capture, prop);
+}  
+
 void* query_frame(void* capture){
   return (void*)cvQueryFrame((CvCapture*)capture);
 }  
