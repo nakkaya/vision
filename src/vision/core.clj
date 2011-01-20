@@ -293,3 +293,8 @@
   "Dilates image by using arbitrary structuring element"
   [{p :pointer t :color-space} iterations]
   (ipl-image (call :dilate Pointer [p iterations]) t))
+
+(defn canny
+  "Implements Canny algorithm for edge detection."
+  [{p :pointer} threshold1 threshold2 aperture-size]
+  (ipl-image (call :canny Pointer [p threshold1 threshold2 aperture-size]) :binary))

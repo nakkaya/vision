@@ -438,3 +438,12 @@ void* dilate(void* i, int iterations){
   cvDilate(out, out, 0, iterations);
   return (void*)out;
 }
+
+void* canny(void* i, int t1, int t2, int as){
+  IplImage* image = (IplImage*)i;
+  IplImage* edges = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
+
+  cvCanny(image, edges, t1, t2, as);
+
+  return (void*)edges;
+}
