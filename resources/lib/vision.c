@@ -480,3 +480,55 @@ void* canny(void* i, int t1, int t2, int as){
 
   return (void*)edges;
 }
+
+float* hough_lines(void* i, int method, double rho, double theta, int threshold, double param1, double param2){
+  IplImage* image = (IplImage*)i;
+  CvMemStorage* storage = cvCreateMemStorage(0);
+  cvClearMemStorage(storage);
+
+  switch(method) {
+  case 1:
+    method = CV_HOUGH_STANDARD; break;
+  case 2:
+    method = CV_HOUGH_PROBABILISTIC; break;
+  case 3:
+    method = CV_HOUGH_MULTI_SCALE; break;
+  }
+
+  CvSeq* lines = cvHoughLines2(image, storage, method, rho, theta, threshold, param1, param2);
+
+  if(lines->total == 0)
+    return NULL;
+
+  float* vals;
+
+  if(method == CV_HOUGH_STANDARD || method == CV_HOUGH_MULTI_SCALE){
+    vals = malloc((1 + 2 * lines->total) * sizeof(float));
+    vals[0] = (float)lines->total;
+
+    int i,k;
+    for(i=0, k=1; i<lines->total; i++, k+=2){
+      float* line = (float*)cvGetSeqElem(lines,i);
+    
+      vals[k] = line[0]; // rho
+      vals[k+1] = line[1]; //theta
+
+    }
+  }else{
+    vals = malloc((1 + 4 * lines->total) * sizeof(float));
+    vals[0] = (float)lines->total;
+
+    int i,k;
+    for(i=0, k=1; i<lines->total; i++, k+=4){
+      CvPoint* line = (CvPoint*)cvGetSeqElem(lines,i);
+    
+      vals[k] = line[0].x; 
+      vals[k+1] = line[0].y;
+      vals[k+2] = line[1].x; 
+      vals[k+3] = line[1].y;
+    }
+  }
+
+  cvReleaseMemStorage(&storage);
+  return vals;
+}

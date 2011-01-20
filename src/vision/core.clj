@@ -313,3 +313,18 @@
   "Implements Canny algorithm for edge detection."
   [{p :pointer} threshold1 threshold2 aperture-size]
   (ipl-image (call :canny Pointer [p threshold1 threshold2 aperture-size]) :binary))
+
+(defn hough-lines
+  "Finds lines in grayscale image using a Hough transform."
+  [{i :pointer} method rho theta threshold param1 param2]
+  (let [m (cond (= method :standard) 1
+                (= method :probabilistic) 2
+                (= method :multi-scale) 3
+                :default (throw (Exception. "Unknown Method.")))]
+    (with-pointer [p (call :hough_lines FloatByReference
+                           [i m (double rho) (double theta) threshold (double param1) (double param2)])]
+      (let [count (.getFloat p 0)]
+        (if (or (= method :standard)
+                (= method :multi-scale))
+          (partition 2 (seq (drop 1 (.getFloatArray p 0 (inc (* 2 count))))))
+          (partition 4 (seq (drop 1 (.getFloatArray p 0 (inc (* 4 count)))))))))))
