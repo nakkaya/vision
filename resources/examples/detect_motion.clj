@@ -12,18 +12,22 @@
        (while (:run @state)
          (let [curr (query-frame capture)
                prev (:prev @state)
-               rect (--> (abs-diff curr prev)
-                         (convert-color :bgr-gray)
-                         (smooth :gaussian 9 9 0 0)
-                         (threshold 30 255 :binary)
-                         (bounding-rect))]
+               processed (--> (abs-diff curr prev)
+                              (convert-color :bgr-gray)
+                              (smooth :gaussian 9 9 0 0)
+                              (threshold 30 255 :binary))
+               rects (with-contours [c [processed :external :chain-approx-none [0 0]]]
+                       (bounding-rects c))]
 
-           (doseq [[x y w h] rect]
+           (doseq [[x y w h] rects]
              (rectangle curr x y w h java.awt.Color/red 5))
 
            (dosync (alter state assoc :prev (clone-image curr)))
+
            (show-image :motion curr)
-           (release-image prev)))
+
+           (release-image prev)
+           (release-image processed)))
        (release-capture capture))))
 
   (defn stop []
