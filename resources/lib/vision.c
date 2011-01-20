@@ -382,17 +382,24 @@ void* find_contours(void* m, int mode, int method, int x, int y){
     size = sizeof(CvContour);
 
   cvFindContours(image, storage, &contours, size, mode, method, cvPoint(x,y));
+
+  if(contours == NULL)
+    cvReleaseMemStorage(&storage);
   
   return contours;
 }
 
 void release_contours(void* s){
   CvSeq* seq = (CvSeq*)s;
-  cvReleaseMemStorage(&seq->storage);
+  if(seq != NULL)
+    cvReleaseMemStorage(&seq->storage);
 }
 
-int* bounding_rect(void* c){
+int* bounding_rects(void* c){
   CvSeq* contours = (CvSeq*)c;
+
+  if(contours == NULL)
+    return NULL;
 
   int total = 0;
   CvSeq* t = contours;

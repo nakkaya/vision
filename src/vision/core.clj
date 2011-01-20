@@ -265,10 +265,10 @@
    :else (throw (IllegalArgumentException.
                  "with-contours only allows Symbols in bindings"))))
 
-(defn bounding-rect
+(defn bounding-rects
   "Returns the up-right bounding rectangles for contours."
   [contours]
-  (with-pointer [p (call :bounding_rect IntByReference [contours])]
+  (with-pointer [p (call :bounding_rects IntByReference [contours])]
     (let [count (.getInt p 0)]
       (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
 
