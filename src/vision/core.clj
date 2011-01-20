@@ -38,20 +38,26 @@
 (defn- release-memory [p]
   (call :release_memory [p]))
 
-(defn image-size
+(defmulti image-size
   "Get image width, height."
-  [[p _]]
-  (with-pointer [p (call :image_size IntByReference [p])]
-    (seq (.getIntArray p 0 2))))
+  class)
+
+(defmethod image-size Pointer [p]
+           (with-pointer [p (call :image_size IntByReference [p])]
+             (seq (.getIntArray p 0 2))))
+
+(defmethod image-size IplImage [{p :pointer}]
+           (with-pointer [p (call :image_size IntByReference [p])]
+             (seq (.getIntArray p 0 2))))
 
 (defn- pixels [p t]
   (with-pointer [ptr (call :pixels IntByReference [p t])]
-    (let [[width height] (image-size [p])]
+    (let [[width height] (image-size p)]
       (.getIntArray ptr 0 (* width height)))))
 
 (defn- buffered-image [pxs t]
   (delay
-   (let [[width height] (image-size [pxs])
+   (let [[width height] (image-size pxs)
          pxs (pixels pxs t)]
      (java.awt.image.BufferedImage.
       (. java.awt.image.ColorModel getRGBdefault)
