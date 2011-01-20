@@ -225,15 +225,18 @@
    max-val
      Maximum value to use with :binary, :binary-inv, and :trunc thresholding types.
    thresholdType
-     Thresholding type (see the cvThreshold)"
-  [{p :pointer} threshold max-val type]
-  (ipl-image (call :threshold Pointer [p (double threshold) (double max-val)
-                                       (cond (= type :binary) 1
-                                             (= type :binary-inv) 2
-                                             (= type :trunc) 3
-                                             (= type :to-zero) 4
-                                             (= type :to-zero-inv) 5
-                                             :default (throw (Exception. "Unknown Type.")))]) 2))
+     Thresholding type (see the cvThreshold)
+   if you don't provide threshold it will automatically calculated using otsu method."
+  ([image max-val type]
+     (threshold image (double -1) max-val type))
+  ([{p :pointer} threshold max-val type]
+     (ipl-image (call :threshold Pointer [p (double threshold) (double max-val)
+                                          (cond (= type :binary) 1
+                                                (= type :binary-inv) 2
+                                                (= type :trunc) 3
+                                                (= type :to-zero) 4
+                                                (= type :to-zero-inv) 5
+                                                :default (throw (Exception. "Unknown Type.")))]) 2)))
 
 (defn load-cascade
   "Load a HaarClassifierCascade."

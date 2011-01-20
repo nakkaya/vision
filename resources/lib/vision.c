@@ -334,6 +334,9 @@ void* threshold(void* i, double th, double maxVal, int type){
   else if (type == 5)
     type = CV_THRESH_TOZERO_INV;
 
+  if(th == -1)
+    type = type | CV_THRESH_OTSU;
+
   IplImage* binary = cvCreateImage(cvGetSize(src),IPL_DEPTH_8U,1);
   cvThreshold(src, binary, th, maxVal, type);
 
