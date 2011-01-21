@@ -1,10 +1,6 @@
 (ns vision.graphics
   (:use [vision core util]))
 
-(defn- image-panel [image]
-  (proxy [javax.swing.JPanel] []
-    (paintComponent [g] (.drawImage g image 0 0 this))))
-
 (defn color-picker
   "Displays the image in a frame with a mouse listener attached that will
    print the HSV values for the pixels clicked."
@@ -22,7 +18,8 @@
                    (mouseReleased [e])
                    (mouseEntered [e])
                    (mouseExited [e]))
-        panel  (doto (image-panel @image)
+        panel  (doto (proxy [javax.swing.JPanel] []
+                       (paintComponent [g] (.drawImage g @image 0 0 this)))
                  (.addMouseListener listener))]
     (doto (javax.swing.JFrame.)
       (.add panel)
