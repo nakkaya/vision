@@ -94,8 +94,9 @@
 
 (defn release-image
   "Release allocated image."
-  [{p :pointer}]
-  (call :release_image [p]))
+  [& imgs]
+  (doseq [img imgs]
+    (call :release_image [(:pointer img)])))
 
 (defn save-image
   "Saves an image to the file."
