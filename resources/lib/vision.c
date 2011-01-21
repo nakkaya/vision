@@ -537,3 +537,15 @@ float* hough_lines(void* i, int method, double rho, double theta, int threshold,
   cvReleaseMemStorage(&storage);
   return vals;
 }
+
+void* copy_region(void* i, int x, int y, int w, int h){
+  IplImage* image = (IplImage*)i;
+  IplImage* clone = cvCloneImage(image);
+
+  cvSetImageROI(clone, cvRect(x, y, w, h));
+  IplImage *copy = cvCreateImage(cvGetSize(clone), clone->depth, clone->nChannels);
+  cvCopy(clone, copy, NULL);
+
+  cvReleaseImage(&clone);
+  return (void*)copy;
+}

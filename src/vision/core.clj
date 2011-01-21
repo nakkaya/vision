@@ -331,3 +331,8 @@
                 (= method :multi-scale))
           (partition 2 (seq (drop 1 (.getFloatArray p 0 (inc (* 2 count))))))
           (partition 4 (seq (drop 1 (.getFloatArray p 0 (inc (* 4 count)))))))))))
+
+(defn copy-region
+  "Make a copy of the region from image"
+  [{p :pointer cs :color-space} x y width height]
+  (ipl-image (call :copy_region Pointer [p x y width height]) cs))
