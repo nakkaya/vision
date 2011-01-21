@@ -46,6 +46,12 @@
     (.setStroke (java.awt.BasicStroke. thickness))
     (.drawLine x1 y1 x2 y2)))
 
+(defn poly-line
+  "Draws a closed polygon."
+  [image pts color thickness]
+  (doseq [[p1 p2] (partition 2 1 [(first pts)] pts)]
+    (line image p1 p2 color thickness)))
+
 (defn rectangle
   "Draws simple or thick rectangle."
   [{image :buffered-image} x y width height color thickness]
