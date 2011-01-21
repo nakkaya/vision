@@ -96,12 +96,15 @@
   "Release allocated image."
   [& imgs]
   (doseq [img imgs]
-    (call :release_image [(:pointer img)])))
+    (if (instance? IplImage img)
+      (call :release_image [(:pointer img)])
+      (throw (Exception. "Can't release not an IplImage.")))))
 
 (defn save-image
   "Saves an image to the file."
-  [{p :pointer} f]
-  (call :save_image [p f]))
+  [img f]
+  {:pre [(instance? IplImage img) (instance? String f)]}
+  (call :save_image [(:pointer img) f]))
 
 (defn capture-from-cam
   "Allocates CvCapture structure and  binds it to the video camera."
