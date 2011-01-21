@@ -268,8 +268,10 @@ void* convert_color(void* i, int mode){
   else if (mode == 6)
     mode = CV_GRAY2BGR;
 
-  if(mode == 5 || mode == 6)
+  if(mode == CV_BGR2GRAY)
     converted = cvCreateImage(cvGetSize((IplImage*)image), IPL_DEPTH_8U, 1);
+  else if(mode == CV_GRAY2BGR)
+    converted = cvCreateImage(cvGetSize((IplImage*)image), image->depth, 3);
   else
     converted = cvCreateImage(cvGetSize((IplImage*)image), image->depth, image->nChannels);
 
