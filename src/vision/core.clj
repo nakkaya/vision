@@ -67,18 +67,13 @@
       false nil))))
 
 (defn- ipl-image [ref cs]
-  (let [type (cond (= cs :color) 1
-                   (= cs :unchanged) 1
+  (let [type (cond (= cs :bgr) 1
                    (= cs :binary) 2
+                   (= cs :hsv) 3
+                   (= cs :rgb) 4
                    (= cs :grayscale) 5
-                   (= cs :rgb-hsv) 3
-                   (= cs :hsv-rgb) 4
-                   (= cs :bgr-hsv) 3
-                   (= cs :hsv-bgr) 1
-                   (= cs :bgr-gray) 5
-                   (= cs :gray-bgr) 1
-                   :default cs)]
-    (IplImage. ref type (buffered-image ref type))))
+                   :default (throw (Exception. "Unknown Color Space.")))]
+    (IplImage. ref cs (buffered-image ref type))))
 
 (defn load-image
   "Loads an image from file
@@ -88,9 +83,8 @@
   {:pre  [(.exists (java.io.File. f))]}
   (let [ref (call :load_image Pointer [f (cond (= c :color) 1
                                                (= c :grayscale) 0
-                                               (= c :unchanged) -1
                                                :default (throw (Exception. "Unknown Type.")))])]
-    (ipl-image ref c)))
+    (ipl-image ref (if (= c :color) :bgr :grayscale))))
 
 (defn release-image
   "Release allocated image."
@@ -135,7 +129,7 @@
 (defn query-frame
   "Grabs and returns a frame from camera or file."
   [c]
-  (ipl-image (call :query_frame Pointer [c]) :color))
+  (ipl-image (call :query_frame Pointer [c]) :bgr))
 
 (defn release-capture
   "Releases the CvCapture structure."
@@ -191,7 +185,13 @@
                                                    (= m :hsv-bgr) 4
                                                    (= m :bgr-gray) 5
                                                    (= m :gray-bgr) 6
-                                                   :default (throw (Exception. "Unknown Convertion.")))]) m))
+                                                   :default (throw (Exception. "Unknown Convertion.")))])
+             (cond (= m :rgb-hsv) :hsv
+                   (= m :hsv-rgb) :rgb
+                   (= m :bgr-hsv) :hsv
+                   (= m :hsv-bgr) :bgr
+                   (= m :bgr-gray) :grayscale
+                   (= m :gray-bgr) :bgr)))
 
 (defn smooth
   "Smooths the image in one of several ways.
@@ -240,7 +240,7 @@
                                                 (= type :trunc) 3
                                                 (= type :to-zero) 4
                                                 (= type :to-zero-inv) 5
-                                                :default (throw (Exception. "Unknown Type.")))]) 2)))
+                                                :default (throw (Exception. "Unknown Type.")))]) :binary)))
 
 (defn load-cascade
   "Load a HaarClassifierCascade."
