@@ -370,3 +370,60 @@
   "Writes a frame to video file."
   [p {img :pointer}]
   (call :write_frame Integer [p img]))
+
+;;
+;; GUI Calls
+;;
+
+(defn circle
+  "Draws simple, thick or filled circle."
+  [{p :pointer} [x y] r c thickness]
+  (call :circle [p (int x) (int y) (int r) (.getRed c) (.getGreen c) (.getBlue c) thickness]))
+
+(defn line
+  "Draws simple or thick line segment."
+  [{p :pointer} [x1 y1] [x2 y2] c thickness]
+  (call :line [p (int x1) (int y1) (int x2) (int y2) (.getRed c) (.getGreen c) (.getBlue c) thickness]))
+
+(defn poly-line
+  "Draws a closed polygon."
+  [image pts color thickness]
+  (doseq [[p1 p2] (partition 2 1 [(first pts)] pts)]
+    (line image p1 p2 color thickness)))
+
+(defn rectangle
+  "Draws simple or thick rectangle."
+  [{p :pointer} [x1 y1] [x2 y2] c thickness]
+  (call :rectangle [p (int x1) (int y1) (int x2) (int y2) (.getRed c) (.getGreen c) (.getBlue c) thickness]))
+
+
+(def *frames* (ref {}))
+
+(defn- image-panel [f]
+  (let [p (proxy [javax.swing.JPanel] []
+            (paintComponent [g] (.drawImage g (-> @*frames* f :image) 0 0 this))
+            (getPreferredSize [] (java.awt.Dimension.
+                                  (.getWidth (-> @*frames* f :image))
+                                  (.getHeight (-> @*frames* f :image)))))]
+    (add-watch *frames* (str f) (fn [k r o n] (.repaint p)))
+    p))
+
+(defn- window-adapter [f]
+  (proxy [java.awt.event.WindowAdapter] [] 
+    (windowClosing [e] (dosync (alter *frames* dissoc f)))))
+
+(defn- image-frame [f]
+  (let [frame (doto (javax.swing.JFrame. (str f))
+                (.add (image-panel f))
+                (.setAlwaysOnTop true)
+                (.pack)
+                (.addWindowListener (window-adapter f))
+                (.setVisible true))]
+    (dosync (alter *frames* assoc-in [f :frame] frame))))
+
+(defn view
+  "Displays the image in a frame."
+  [f {i :buffered-image}]
+  (dosync (alter *frames* assoc-in [f :image] @i))  
+  (when (nil? (-> @*frames* f :frame))
+    (image-frame f)))

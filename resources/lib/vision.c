@@ -607,3 +607,23 @@ int write_frame(void* w, void* i){
   IplImage* img = (IplImage*)i;
   return cvWriteFrame(writer,img);
 }
+
+
+/* 
+   Drawing Functions 
+*/
+
+void line(void* i, int x1, int y1, int x2, int y2, int r, int g, int b, int thickness){
+  IplImage* img = (IplImage*)i;
+  cvLine(img, cvPoint(x1,y1), cvPoint(x2,y2), cvScalar(r,g,b,0), thickness, 8, 0);
+}
+
+void circle(void* i, int x, int y, int rds, int r, int g, int b, int thickness){
+  IplImage* img = (IplImage*)i;
+  cvCircle(img, cvPoint(x,y), rds, cvScalar(r,g,b,0), thickness, 8, 0);
+}
+
+void rectangle(void* i, int x1, int y1, int x2, int y2, int r, int g, int b, int thickness){
+  IplImage* img = (IplImage*)i;
+  cvRectangle(img, cvPoint(x1,y1), cvPoint(x2,y2), cvScalar(r,g,b,0), thickness, 8, 0);
+}
