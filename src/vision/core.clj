@@ -138,7 +138,8 @@
 
 (defn hough-circles
   "Finds circles in grayscale image using some modification of Hough transform."
-  [{i :pointer} dp min_d p1 p2 min-r max-r]
+  [{i :pointer cs :color-space} dp min_d p1 p2 min-r max-r]
+  {:pre [(some true? (map #(= % cs) [:binary :grayscale]))]}
   (with-pointer [p (call :hough_circles FloatByReference [i dp min_d p1 p2 min-r max-r])]
     (let [count (.getFloat p 0)]
       (partition 3 (seq (drop 1 (.getFloatArray p 0 (inc (* 3 count)))))))))
@@ -233,7 +234,8 @@
    if you don't provide threshold it will automatically calculated using otsu method."
   ([image max-val type]
      (threshold image (double -1) max-val type))
-  ([{p :pointer} threshold max-val type]
+  ([{p :pointer cs :color-space} threshold max-val type]
+     {:pre [(= cs :grayscale)]}
      (ipl-image (call :threshold Pointer [p (double threshold) (double max-val)
                                           (cond (= type :binary) 1
                                                 (= type :binary-inv) 2
@@ -268,7 +270,9 @@
     (let [count (.getInt p 0)]
       (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
 
-(defn find-contours [{image :pointer} mode method [x y]]
+(defn find-contours
+  [{image :pointer cs :color-space} mode method [x y]]
+  {:pre [(some true? (map #(= % cs) [:binary :grayscale]))]}
   (let [mode (cond (= mode :external) 1
                    (= mode :list) 2
                    (= mode :ccomp) 3
@@ -323,7 +327,8 @@
 
 (defn hough-lines
   "Finds lines in grayscale image using a Hough transform."
-  [{i :pointer} method rho theta threshold param1 param2]
+  [{i :pointer cs :color-space} method rho theta threshold param1 param2]
+  {:pre [(= cs :binary)]}
   (let [m (cond (= method :standard) 1
                 (= method :probabilistic) 2
                 (= method :multi-scale) 3
