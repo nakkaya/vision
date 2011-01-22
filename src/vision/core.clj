@@ -4,9 +4,6 @@
            (com.sun.jna.ptr ByReference IntByReference FloatByReference)
            (java.awt.image BufferedImage ColorModel Raster DataBufferInt)))
 
-(System/setProperty "jna.library.path" "./resources/lib/")
-
-
 (defrecord IplImage [#^Pointer pointer
                      #^clojure.lang.Keyword color-space
                      #^java.awt.image.BufferedImage buffered-image])
