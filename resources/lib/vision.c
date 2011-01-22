@@ -575,3 +575,20 @@ void* rotate_image(void *s, float angle_degrees){
 
   return image_rotated;
 }
+
+void* scale_image(void *s, double factor){
+  IplImage* src = (IplImage*)s;
+
+  int w = src->width * factor;
+  int h = src->height * factor;
+
+  CvSize size_scaled;
+  size_scaled.width = cvRound(w);
+  size_scaled.height = cvRound(h);
+
+  IplImage *image_scaled = cvCreateImage(size_scaled, src->depth, src->nChannels);
+
+  cvResize(src, image_scaled, CV_INTER_LINEAR);
+
+  return image_scaled;
+}

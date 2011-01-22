@@ -350,3 +350,8 @@
   "Rotate image by a degree."
   [{p :pointer cs :color-space} a]
   (ipl-image (call :rotate_image Pointer [p (float a)]) cs))
+
+(defn scale-image
+  "Rotate image by a factor."
+  [{p :pointer cs :color-space} s]
+  (ipl-image (call :scale_image Pointer [p (double s)]) cs))
