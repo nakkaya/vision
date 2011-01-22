@@ -1,5 +1,5 @@
 (ns face-detect
-  (:use [vision core graphics] :reload-all))
+  (:use [vision core] :reload-all))
 
 (let [state (ref true)]
   
@@ -13,10 +13,10 @@
                faces (haar-detect-objects curr cascade 1.1 2 :haar-do-canny-prunning [40 40])]
 
            (doseq [[x y w h] faces] 
-             (rectangle curr x y w h java.awt.Color/red 5))
+             (rectangle curr [x y] [(+ w x) (+ h y)] java.awt.Color/red 5))
            
-           (show-image :cam curr)))
-       (release-capture capture))))
+           (view :cam curr)))
+       (release capture))))
 
   (defn stop []
     (dosync (ref-set state false))))

@@ -1,5 +1,5 @@
 (ns display-webcam
-  (:use [vision core graphics] :reload-all))
+  (:use [vision core] :reload-all))
 
 (let [state (ref true)]
   
@@ -8,8 +8,8 @@
       (dosync (ref-set state true))
       (future
        (while @state
-         (show-image :cam (query-frame capture)))
-       (release-capture capture))))
+         (view :cam (query-frame capture)))
+       (release capture))))
 
   (defn stop []
     (dosync (ref-set state false))))

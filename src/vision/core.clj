@@ -1,7 +1,7 @@
 (ns vision.core
   (:use [clojure.contrib.def :only [defmacro-]])
   (:import (com.sun.jna Function Pointer)
-           (com.sun.jna.ptr IntByReference FloatByReference)
+           (com.sun.jna.ptr ByReference IntByReference FloatByReference)
            (java.awt.image BufferedImage ColorModel Raster DataBufferInt)))
 
 (System/setProperty "jna.library.path" "./resources/lib/")
@@ -10,6 +10,17 @@
 (defrecord IplImage [#^Pointer pointer
                      #^clojure.lang.Keyword color-space
                      #^java.awt.image.BufferedImage buffered-image])
+(defrecord Capture [#^Pointer pointer source])
+(defrecord Contours [#^Pointer pointer])
+(defrecord VideoWriter [#^Pointer pointer])
+
+(defmulti release
+  "Release resource."
+  class)
+
+(defmethod release clojure.lang.PersistentVector [xs]
+           (doseq [x xs] 
+             (release x)))
 
 (defmacro -->
   "Threads images through the forms. Passing images from call to call and relasing
@@ -17,7 +28,7 @@
   ([x] x)
   ([x form] `(let [img# ~x
                    next# (~(first form) img# ~@(next form))]
-               (release-image img#)
+               (release img#)
                next#))
   ([x form & more] `(--> (--> ~x ~form) ~@more)))
 
@@ -34,10 +45,10 @@
        (let [~(first binding) (.getPointer ref#)]
          ~@body)
        (finally
-        (release-memory ref#)))))
+        (release ref#)))))
 
-(defn- release-memory [p]
-  (call :release_memory [p]))
+(defmethod release ByReference [p]
+           (call :release_memory [p]))
 
 (defmulti image-size
   "Get image width, height."
@@ -86,13 +97,8 @@
                                                :default (throw (Exception. "Unknown Type.")))])]
     (ipl-image ref (if (= c :color) :bgr :grayscale))))
 
-(defn release-image
-  "Release allocated image."
-  [& imgs]
-  (doseq [img imgs]
-    (if (instance? IplImage img)
-      (call :release_image [(:pointer img)])
-      (throw (Exception. "Can't release not an IplImage.")))))
+(defmethod release IplImage [img]
+           (call :release_image [(:pointer img)]))
 
 (defn save-image
   "Saves an image to the file."
@@ -103,15 +109,15 @@
 (defn capture-from-cam
   "Allocates CvCapture structure and  binds it to the video camera."
   [n]
-  (call :capture_from_cam Pointer [n]))
+  (Capture. (call :capture_from_cam Pointer [n]) n))
 
 (defn capture-from-file
   "Initializes capturing a video from a file."
   [f]
   {:pre  [(.exists (java.io.File. f))]}
-  (call :capture_from_file Pointer [f]))
+  (Capture. (call :capture_from_file Pointer [f]) f))
 
-(defn get-capture-property [c p]
+(defn get-capture-property [{c :pointer} p]
   (call :get_capture_property Double [c (cond (= p :pos-msec) 1
                                               (= p :pos-frames) 2
                                               (= p :pos-avi-ratio) 3
@@ -128,13 +134,11 @@
 
 (defn query-frame
   "Grabs and returns a frame from camera or file."
-  [c]
+  [{c :pointer}]
   (ipl-image (call :query_frame Pointer [c]) :bgr))
 
-(defn release-capture
-  "Releases the CvCapture structure."
-  [c]
-  (call :release_capture [c]))
+(defmethod release Capture [cap]
+           (call :release_capture [(:pointer cap)]))
 
 (defn hough-circles
   "Finds circles in grayscale image using some modification of Hough transform."
@@ -285,10 +289,10 @@
                      (= method :chain-approx-tc89-kcos) 5
                      (= method :link-runs) 6
                      :default (throw (Exception. "Unknown Method.")))]
-    (call :find_contours Pointer [image mode method x y])))
+    (Contours. (call :find_contours Pointer [image mode method x y]))))
 
-(defn release-contours [contours]
-  (call :release_contours [contours]))
+(defmethod release Contours [contours]
+           (call :release_contours [(:pointer contours)]))
 
 (defmacro with-contours
   [bindings & body]
@@ -299,13 +303,13 @@
                              (try
                                (with-contours ~(subvec bindings 2) ~@body)
                                (finally
-                                (release-contours ~(bindings 0)))))
+                                (release ~(bindings 0)))))
    :else (throw (IllegalArgumentException.
                  "with-contours only allows Symbols in bindings"))))
 
 (defn bounding-rects
   "Returns the up-right bounding rectangles for contours."
-  [contours]
+  [{contours :pointer}]
   (with-pointer [p (call :bounding_rects IntByReference [contours])]
     (let [count (.getInt p 0)]
       (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
@@ -359,16 +363,14 @@
 (defn video-writer
   "Creates video file writer."
   [f cc fps w h color?]
-  (call :video_writer Pointer [f cc fps w h (if color? 1 0)]))
+  (VideoWriter. (call :video_writer Pointer [f cc fps w h (if color? 1 0)])))
 
-(defn release-video-writer
-  "Releases video writer."
-  [p]
-  (call :release_video_writer [p]))
+(defmethod release VideoWriter [{p :pointer}]
+           (call :release_video_writer [p]))
 
 (defn write-frame
   "Writes a frame to video file."
-  [p {img :pointer}]
+  [{p :pointer} {img :pointer}]
   (call :write_frame Integer [p img]))
 
 ;;

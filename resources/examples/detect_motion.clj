@@ -1,5 +1,5 @@
 (ns detect-motion
-  (:use [vision core graphics] :reload-all))
+  (:use [vision core] :reload-all))
 
 (let [state (ref {:run true})]
   
@@ -17,18 +17,18 @@
                               (smooth :gaussian 9 9 0 0)
                               (threshold 30 255 :binary))
                rects (with-contours [c [processed :external :chain-approx-none [0 0]]]
-                       (bounding-rects c))]
-
-           (doseq [[x y w h] rects]
-             (rectangle curr x y w h java.awt.Color/red 5))
+                       (bounding-rects c))
+               display (clone-image curr)]
 
            (dosync (alter state assoc :prev (clone-image curr)))
 
-           (show-image :motion curr)
+           (doseq [[x y w h] rects]
+             (rectangle display [x y] [(+ w x) (+ h y)] java.awt.Color/red 5))
 
-           (release-image prev)
-           (release-image processed)))
-       (release-capture capture))))
+           (view :motion display)
+
+           (release [prev processed display])))
+       (release capture))))
 
   (defn stop []
     (dosync (alter state assoc :run false))))

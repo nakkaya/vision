@@ -1,5 +1,5 @@
 (ns segmentation
-  (:use [vision core graphics] :reload-all))
+  (:use [vision core] :reload-all))
 
 (let [image (load-image "resources/samples/plate.jpeg" :color)
       processed (--> (convert-color image :bgr-gray)
@@ -10,9 +10,8 @@
            (bounding-rects c))]
 
   (doseq [[x y w h] cs] 
-    (rectangle image x y w h java.awt.Color/red 1))
+    (rectangle image [x y] [(+ w x) (+ h y)] java.awt.Color/red 1))
   
-  (show-image :result image)
+  (view :result image)
 
-  (release-image image)
-  (release-image processed))
+  (release [image processed]))

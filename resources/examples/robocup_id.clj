@@ -3,7 +3,12 @@
   (:use (clojure.contrib.generic [arithmetic :only [+ - *]]
                                  [comparison :only [=]]))
   (:use [vector-2d.core] :reload-all)
-  (:use [vision core graphics util] :reload-all))
+  (:use [vision core] :reload-all))
+
+(defn in-range? [x [a b]]
+  (if (and (>= x a)
+           (<= x b))
+    true false))
 
 (defn id-10 [team pink]
   (let [pink (map #(apply vector-2d (take 2 %)) pink)]
@@ -39,9 +44,9 @@
                  (hough-circles 2 35 100 40 10 30))]
 
   (doseq [c pink]
-    (circle image c java.awt.Color/yellow 3))
+    (circle image (take 2 c) 10 java.awt.Color/yellow 3))
   
-  (circle image (concat (id-10 blue pink) [20]) java.awt.Color/red -1)
-  (circle image (concat (id-09 blue pink) [20]) java.awt.Color/red -1)
+  (circle image (id-10 blue pink) 20 java.awt.Color/red 10)
+  (circle image (id-09 blue pink) 20 java.awt.Color/red 10)
   
-  (show-image :result image))
+  (view :result image))

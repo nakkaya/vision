@@ -1,5 +1,5 @@
 (ns bounding-box
-  (:use [vision core graphics] :reload-all))
+  (:use [vision core] :reload-all))
 
 (let [image (load-image "resources/samples/soccerfield.jpeg" :color)
       processed (--> (convert-color image :bgr-hsv)
@@ -8,8 +8,7 @@
       [[x y width height]] (with-contours [c [processed :external :chain-approx-none [0 0]]]
                              (bounding-rects c))]
   
-  (rectangle image x y width height java.awt.Color/red 4)
-  (show-image :result image)
+  (rectangle image [x y] [(+ width x) (+ height y)] java.awt.Color/red 4)
+  (view :result image)
 
-  (release-image image)
-  (release-image processed))
+  (release [processed image]))
