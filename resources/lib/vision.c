@@ -592,3 +592,18 @@ void* scale_image(void *s, double factor){
 
   return image_scaled;
 }
+
+void* video_writer(char* f, char* cc, int fps, int w, int h, int is_color){
+  return (void*)cvCreateVideoWriter(f,CV_FOURCC(cc[0],cc[1],cc[2],cc[3]), fps, cvSize(w,h), is_color);;
+}
+
+void release_video_writer(void* w){
+  CvVideoWriter* writer = (CvVideoWriter*)w;
+  cvReleaseVideoWriter(&writer);
+}
+
+int write_frame(void* w, void* i){
+  CvVideoWriter* writer = (CvVideoWriter*)w;
+  IplImage* img = (IplImage*)i;
+  return cvWriteFrame(writer,img);
+}

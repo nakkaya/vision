@@ -355,3 +355,18 @@
   "Rotate image by a factor."
   [{p :pointer cs :color-space} s]
   (ipl-image (call :scale_image Pointer [p (double s)]) cs))
+
+(defn video-writer
+  "Creates video file writer."
+  [f cc fps w h color?]
+  (call :video_writer Pointer [f cc fps w h (if color? 1 0)]))
+
+(defn release-video-writer
+  "Releases video writer."
+  [p]
+  (call :release_video_writer [p]))
+
+(defn write-frame
+  "Writes a frame to video file."
+  [p {img :pointer}]
+  (call :write_frame Integer [p img]))
