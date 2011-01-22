@@ -1,7 +1,8 @@
 (ns vision.core
   (:use [clojure.contrib.def :only [defmacro-]])
   (:import (com.sun.jna Function Pointer)
-           (com.sun.jna.ptr IntByReference FloatByReference)))
+           (com.sun.jna.ptr IntByReference FloatByReference)
+           (java.awt.image BufferedImage ColorModel Raster DataBufferInt)))
 
 (System/setProperty "jna.library.path" "./resources/lib/")
 
@@ -59,11 +60,10 @@
   (delay
    (let [[width height] (image-size pxs)
          pxs (pixels pxs t)]
-     (java.awt.image.BufferedImage.
-      (. java.awt.image.ColorModel getRGBdefault)
-      (java.awt.image.Raster/createPackedRaster
-       (java.awt.image.DataBufferInt. pxs (* width height))
-       width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
+     (BufferedImage.
+      (. ColorModel getRGBdefault)
+      (Raster/createPackedRaster
+       (DataBufferInt. pxs (* width height)) width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
       false nil))))
 
 (defn- ipl-image [ref cs]
