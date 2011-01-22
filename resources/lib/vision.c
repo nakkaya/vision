@@ -549,3 +549,29 @@ void* copy_region(void* i, int x, int y, int w, int h){
   cvReleaseImage(&clone);
   return (void*)copy;
 }
+
+void* rotate_image(void *s, float angle_degrees){
+  IplImage* src = (IplImage*)s;
+
+  float m[6];
+  CvMat M = cvMat(2, 3, CV_32F, m);
+  int w = src->width;
+  int h = src->height;
+  float angle_radians = angle_degrees * ((float)CV_PI / 180.0f);
+  m[0] = (float)( cos(angle_radians) );
+  m[1] = (float)( sin(angle_radians) );
+  m[3] = -m[1];
+  m[4] = m[0];
+  m[2] = w*0.5f;  
+  m[5] = h*0.5f;  
+
+  CvSize size_rotated;
+  size_rotated.width = cvRound(w);
+  size_rotated.height = cvRound(h);
+
+  IplImage *image_rotated = cvCreateImage(size_rotated, src->depth, src->nChannels);
+
+  cvGetQuadrangleSubPix(src, image_rotated, &M);
+
+  return image_rotated;
+}

@@ -345,3 +345,8 @@
   "Make a copy of the region from image"
   [{p :pointer cs :color-space} x y width height]
   (ipl-image (call :copy_region Pointer [p x y width height]) cs))
+
+(defn rotate-image
+  "Rotate image by a degree."
+  [{p :pointer cs :color-space} a]
+  (ipl-image (call :rotate_image Pointer [p (float a)]) cs))
