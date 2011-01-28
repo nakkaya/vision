@@ -9,8 +9,13 @@ project(vision)
 
 find_package (OpenCV REQUIRED)
 
-add_library(vision SHARED vision.c)
+add_executable(calibrate_cam calibrate_cam.c)
+target_link_libraries(calibrate_cam opencv_core
+                                    opencv_highgui
+                                    opencv_calib3d
+                                    opencv_imgproc)
 
+add_library(vision SHARED vision.c)
 target_link_libraries(vision opencv_core
                              opencv_highgui
                              opencv_video
