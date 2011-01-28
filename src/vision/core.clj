@@ -416,6 +416,7 @@
             (getPreferredSize [] (java.awt.Dimension.
                                   (.getWidth (-> @*frames* f :image))
                                   (.getHeight (-> @*frames* f :image)))))]
+    (dosync (alter *frames* assoc-in [f :panel] p))
     (add-watch *frames* (str f) (fn [k r o n] (.repaint p)))
     p))
 
