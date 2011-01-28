@@ -350,7 +350,9 @@ void* load_cascade(char* f){
 }
 
 int* haar_detect_objects(void* i, void* c, 
-                         double scale_factor, int min_neighbors, int flags, int min_w, int min_h){
+                         double scale_factor, int min_neighbors, int flags, 
+                         int min_w, int min_h, int max_w, int max_h){
+
   IplImage* image = (IplImage*)i;
   CvHaarClassifierCascade* cascade = (CvHaarClassifierCascade*)c;
 
@@ -361,7 +363,8 @@ int* haar_detect_objects(void* i, void* c,
     flags = CV_HAAR_DO_CANNY_PRUNING;
 
   CvSeq* objs = cvHaarDetectObjects(image, cascade, 
-                                    storage, scale_factor, min_neighbors, flags, cvSize(min_w, min_h));
+                                    storage, scale_factor, min_neighbors, flags, 
+                                    cvSize(min_w, min_h), cvSize(max_w, max_h));
 
   if(objs->total == 0){
     cvReleaseMemStorage(&storage);

@@ -10,7 +10,7 @@
       (future
        (while @state
          (let [curr (query-frame capture)
-               faces (haar-detect-objects curr cascade 1.1 2 :haar-do-canny-prunning [40 40])]
+               faces (haar-detect-objects curr cascade 1.1 2 :haar-do-canny-prunning [40 40] [100 100])]
 
            (doseq [[x y w h] faces] 
              (rectangle curr [x y] [(+ w x) (+ h y)] java.awt.Color/red 5))

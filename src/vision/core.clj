@@ -264,10 +264,12 @@
   flags
    Mode of operation. Currently the only flag that may be specified is :haar-do-canny-prunning.
   [min-w min-h]
-   Minimum window size."
-  [{i :pointer} cascade scale-factor min-neighbors flag [min-w min-h]]
+   Minimum window size.
+  [max-w max-h]
+   Maximum window size."
+  [{i :pointer} cascade scale-factor min-neighbors flag [min-w min-h] [max-w max-h]]
   (with-pointer [p (call :haar_detect_objects IntByReference
-                         [i cascade (double scale-factor) min-neighbors 1 min-w min-h])]
+                         [i cascade (double scale-factor) min-neighbors 1 min-w min-h max-w max-h])]
     (let [count (.getInt p 0)]
       (partition 4 (seq (drop 1 (.getIntArray p 0 (inc (* 4 count)))))))))
 
