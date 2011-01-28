@@ -611,6 +611,36 @@ int write_frame(void* w, void* i){
   return cvWriteFrame(writer,img);
 }
 
+typedef struct {
+  IplImage* mapx;
+  IplImage* mapy;
+} undistort_map;
+
+void* undistort_map_from_file(char* i, char* d, int w, int h){
+  CvMat *intrinsic = (CvMat*)cvLoad(i, NULL, NULL, NULL);
+  CvMat *distortion = (CvMat*)cvLoad(d, NULL, NULL, NULL);
+
+  CvSize size = cvSize(w, h);
+
+  IplImage* mapx = cvCreateImage(size, IPL_DEPTH_32F, 1);
+  IplImage* mapy = cvCreateImage(size, IPL_DEPTH_32F, 1);
+  cvInitUndistortMap(intrinsic,distortion,mapx,mapy);
+
+  undistort_map* map = malloc(sizeof(undistort_map));
+  map->mapx = mapx;
+  map->mapy = mapy;
+  
+  return (void*)map;
+}
+
+void* remap(void* i, void* m){
+  IplImage* img = (IplImage*)i;
+  undistort_map* map = (undistort_map*)m;
+  IplImage *clone = cvCloneImage(img);
+
+  cvRemap( img, clone, map->mapx, map->mapy, CV_INTER_LINEAR+CV_WARP_FILL_OUTLIERS, cvScalarAll(0));
+  return (void*)clone;
+}
 
 /* 
    Drawing Functions 

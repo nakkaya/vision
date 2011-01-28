@@ -372,6 +372,16 @@
   [{p :pointer} {img :pointer}]
   (call :write_frame Integer [p img]))
 
+(defn undistort-map
+  "Computes an undistortion map."
+  [intrinsic distortion [width height]]
+  (call :undistort_map_from_file Pointer [intrinsic distortion width height]))
+
+(defn remap
+  "Applies a generic geometrical transformation to the image."
+  [{p :pointer cs :color-space} distortion-map]
+  (ipl-image (call :remap Pointer [p distortion-map]) cs))
+
 ;;
 ;; GUI Calls
 ;;
