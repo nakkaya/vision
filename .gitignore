@@ -1,6 +1,9 @@
 *.jar
 *.dylib
 *.cmake
+*.exe
+*.a
+*.dll
 Makefile
 CMakeFiles
 CMakeCache.txt
