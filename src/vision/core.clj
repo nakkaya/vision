@@ -439,3 +439,9 @@
   (dosync (alter *frames* assoc-in [f :image] @i))  
   (when (nil? (-> @*frames* f :frame))
     (image-frame f)))
+
+(defn move-window
+  "Sets the position of the window."
+  [f x y]
+  (if-let[f (-> @*frames* f :frame)]
+    (.setLocation f x y)))
