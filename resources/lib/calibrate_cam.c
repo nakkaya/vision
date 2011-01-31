@@ -10,7 +10,7 @@ int board_w;			//Enclosed corners horizontally on the chessboard
 int board_h;			//Enclosed corners vertically on the chessboard
 
 int main(){
-
+  setbuf(stdout,NULL);
   CvCapture* capture;
 
   printf("Camera index = ");
