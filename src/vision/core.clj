@@ -145,6 +145,11 @@
   [{c :pointer}]
   (ipl-image (call :query_frame Pointer [c]) :bgr))
 
+(defn grab-frame
+  "Grabs frame from camera or AVI."
+  [{c :pointer}]
+  (call :grab_frame Integer [c]))
+
 (defmethod release Capture [cap]
            (call :release_capture [(:pointer cap)]))
 

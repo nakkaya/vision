@@ -154,7 +154,11 @@ double get_capture_property(void* c, int prop){
 
 void* query_frame(void* capture){
   return (void*)cvQueryFrame((CvCapture*)capture);
-}  
+}
+
+int grab_frame(void* capture){
+  return cvGrabFrame((CvCapture*)capture);
+}
 
 void release_capture(void* cap){
   CvCapture* capture = (CvCapture*)cap;
