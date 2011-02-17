@@ -129,6 +129,17 @@
                                               (= p :hue) 12
                                               :default (throw (Exception. "Unknown Property.")))]))
 
+(defn set-capture-property [{c :pointer} p v]
+  (call :set_capture_property Integer [c (cond (= p :pos-msec) 1
+                                               (= p :pos-frames) 2
+                                               (= p :pos-avi-ratio) 3
+                                               (= p :frame-width) 4
+                                               (= p :frame-height) 5
+                                               (= p :fps) 6
+                                               (= p :fourcc) 7
+                                               :default (throw (Exception. "Unknown Property.")))
+                                       (double v)]))
+
 (defn query-frame
   "Grabs and returns a frame from camera or file."
   [{c :pointer}]

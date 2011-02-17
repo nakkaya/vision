@@ -96,6 +96,29 @@ void* capture_from_file(char* f){
   return (void*) ptr;
 }
 
+int set_capture_property(void* c, int prop, double value){
+  CvCapture* capture = (CvCapture*)c;
+
+  switch(prop) {
+  case 1:
+    prop = CV_CAP_PROP_POS_MSEC; break;
+  case 2:
+    prop = CV_CAP_PROP_POS_FRAMES; break;
+  case 3:
+    prop = CV_CAP_PROP_POS_AVI_RATIO; break;
+  case 4:
+    prop = CV_CAP_PROP_FRAME_WIDTH; break;
+  case 5:
+    prop = CV_CAP_PROP_FRAME_HEIGHT; break;
+  case 6:
+    prop = CV_CAP_PROP_FPS; break;
+  case 7:
+    prop = CV_CAP_PROP_FOURCC; break;
+  }
+
+  return cvSetCaptureProperty(capture, prop, value);
+}
+
 double get_capture_property(void* c, int prop){
   CvCapture* capture = (CvCapture*)c;
 
@@ -362,9 +385,15 @@ int* haar_detect_objects(void* i, void* c,
   if(flags == 1)
     flags = CV_HAAR_DO_CANNY_PRUNING;
 
+#ifdef CV2_2
   CvSeq* objs = cvHaarDetectObjects(image, cascade, 
                                     storage, scale_factor, min_neighbors, flags, 
                                     cvSize(min_w, min_h), cvSize(max_w, max_h));
+#else
+  CvSeq* objs = cvHaarDetectObjects(image, cascade, 
+                                    storage, scale_factor, min_neighbors, flags, 
+                                    cvSize(min_w, min_h));
+#endif
 
   if(objs->total == 0){
     cvReleaseMemStorage(&storage);
