@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 project(vision)
 
+#set(CMAKE_C_FLAGS -m32) 
+#LINK_DIRECTORIES( /Homebrew/lib/ )
+
 find_package (OpenCV REQUIRED)
 
 add_executable(calibrate_cam calibrate_cam.c)
