@@ -675,6 +675,180 @@ void* remap(void* i, void* m){
   return (void*)clone;
 }
 
+typedef struct{
+  CvSeq * keypoints;
+  CvSeq * descriptors;
+  int width;
+  int height;
+}surf_struct;
+
+void *extract_surf(void *i, CvArr* mask, int exteneded, double threshold, int nOctaves, int nOctaveLayers){
+  IplImage* image = (IplImage*)i;
+  CvSeq *keypoints = 0, *descriptors = 0;
+
+  CvMemStorage* storage = cvCreateMemStorage(0);
+  CvSURFParams params = cvSURFParams(threshold, exteneded);
+  params.nOctaves = nOctaves;
+  params.nOctaveLayers = nOctaveLayers;
+
+
+  cvExtractSURF(image, mask, &keypoints, &descriptors, storage, params ,0);
+
+  surf_struct* s = malloc(sizeof(surf_struct));
+  s->keypoints = keypoints;
+  s->descriptors = descriptors;
+  s->width = image->width;
+  s->height = image->height;
+  return (void*)s;
+}
+
+int *surf_points(void *s){
+  surf_struct* image = (surf_struct*)s;
+
+  int* vals = malloc(image->keypoints->total * 3 * sizeof(int) + 1);
+  vals[0] = image->keypoints->total;
+  int i,k;
+
+  for( i=0, k=1; i < image->keypoints->total; i++, k+=3){
+    CvSURFPoint* r = (CvSURFPoint*)cvGetSeqElem(image->keypoints, i);
+
+    vals[k] = cvRound(r->pt.x);
+    vals[k+1] = cvRound(r->pt.y);
+    vals[k+2] = cvRound(r->size*1.2/9.*2);
+  }
+
+  return vals;
+}
+
+double compareSURFDescriptors(const float* d1, const float* d2, double best, int length){
+    double total_cost = 0;
+    assert( length % 4 == 0 );
+    int i;
+    for( i = 0; i < length; i += 4 ){
+        double t0 = d1[i] - d2[i];
+        double t1 = d1[i+1] - d2[i+1];
+        double t2 = d1[i+2] - d2[i+2];
+        double t3 = d1[i+3] - d2[i+3];
+        total_cost += t0*t0 + t1*t1 + t2*t2 + t3*t3;
+        if( total_cost > best )
+            break;
+    }
+    return total_cost;
+}
+
+int naiveNearestNeighbor(const float* vec, int laplacian,
+                         const CvSeq* model_keypoints,
+                         const CvSeq* model_descriptors){
+    int length = (int)(model_descriptors->elem_size/sizeof(float));
+    int i, neighbor = -1;
+    double d, dist1 = 1e6, dist2 = 1e6;
+    CvSeqReader reader, kreader;
+    cvStartReadSeq( model_keypoints, &kreader, 0 );
+    cvStartReadSeq( model_descriptors, &reader, 0 );
+
+    for( i = 0; i < model_descriptors->total; i++ ){
+        const CvSURFPoint* kp = (const CvSURFPoint*)kreader.ptr;
+        const float* mvec = (const float*)reader.ptr;
+    	CV_NEXT_SEQ_ELEM( kreader.seq->elem_size, kreader );
+        CV_NEXT_SEQ_ELEM( reader.seq->elem_size, reader );
+        if( laplacian != kp->laplacian )
+            continue;
+        d = compareSURFDescriptors( vec, mvec, dist2, length );
+        if( d < dist1 ){
+            dist2 = dist1;
+            dist1 = d;
+            neighbor = i;
+        }
+        else if ( d < dist2 )
+            dist2 = d;
+    }
+    if ( dist1 < 0.6*dist2 )
+        return neighbor;
+    return -1;
+}
+
+CvSeq* findPairs( const CvSeq* objectKeypoints, const CvSeq* objectDescriptors,
+                  const CvSeq* imageKeypoints, const CvSeq* imageDescriptors){
+  CvMemStorage* storage = cvCreateMemStorage(0);
+  CvSeq* seq = cvCreateSeq(0, sizeof(CvSeq), sizeof(int), storage);
+
+  int i;
+  CvSeqReader reader, kreader;
+  cvStartReadSeq(objectKeypoints, &kreader, 0);
+  cvStartReadSeq(objectDescriptors, &reader, 0);
+  
+  for( i = 0; i < objectDescriptors->total; i++ ){
+    const CvSURFPoint* kp = (const CvSURFPoint*)kreader.ptr;
+    const float* descriptor = (const float*)reader.ptr;
+    CV_NEXT_SEQ_ELEM( kreader.seq->elem_size, kreader );
+    CV_NEXT_SEQ_ELEM( reader.seq->elem_size, reader );
+    int nearest_neighbor = naiveNearestNeighbor( descriptor, kp->laplacian, imageKeypoints, imageDescriptors );
+    if( nearest_neighbor >= 0 ){
+      cvSeqPush(seq, &i);
+      cvSeqPush(seq, &nearest_neighbor);
+    }
+  }
+  
+  return seq;
+}
+
+int* locatePlanarObject(void *o, void *s){
+  surf_struct* object = (surf_struct*)o;
+  surf_struct* image = (surf_struct*)s;
+  CvSeq* objectKeypoints = object->keypoints;
+  CvSeq* objectDescriptors = object->descriptors;
+  CvPoint src_corners[4] = {{0,0}, {object->width,0}, {object->width, object->height}, {0, object->height}};
+  CvSeq* imageKeypoints = image->keypoints;
+  CvSeq* imageDescriptors = image->descriptors;
+  int i, n, k;
+
+  CvSeq* seq = findPairs( objectKeypoints, objectDescriptors, imageKeypoints, imageDescriptors);
+  
+  n = seq->total/2;
+  if( n < 4 )
+    return 0;
+
+  CvPoint2D32f *pt1 = (CvPoint2D32f *)malloc(sizeof(CvPoint2D32f) * n);
+  CvPoint2D32f *pt2 = (CvPoint2D32f *)malloc(sizeof(CvPoint2D32f) * n);
+
+  for( i = 0; i < n; i++ ){
+    int* p1 = (int*)cvGetSeqElem(seq, i*2);
+    int* p2 = (int*)cvGetSeqElem(seq, i*2+1);
+
+    pt1[i] = ((CvSURFPoint*)cvGetSeqElem(objectKeypoints,*p1))->pt;
+    pt2[i] = ((CvSURFPoint*)cvGetSeqElem(imageKeypoints,*p2))->pt;
+  }
+
+  double h[9];
+  CvMat _h = cvMat(3, 3, CV_64F, h);
+  CvMat _pt1, _pt2;
+  _pt1 = cvMat(1, n, CV_32FC2, &pt1[0] );
+  _pt2 = cvMat(1, n, CV_32FC2, &pt2[0] );
+  if( !cvFindHomography(&_pt1, &_pt2, &_h, CV_RANSAC, 5, NULL))
+    return 0;
+
+  int* vals = malloc(8 * sizeof(int));
+
+  for(i=0, k=0; i < 4; i++, k+=2 ){
+    double x = src_corners[i].x, y = src_corners[i].y;
+    double Z = 1./(h[6]*x + h[7]*y + h[8]);
+    double X = (h[0]*x + h[1]*y + h[2])*Z;
+    double Y = (h[3]*x + h[4]*y + h[5])*Z;
+    vals[k] = cvRound(X);
+    vals[k+1] = cvRound(Y);    
+  }
+
+  cvClearMemStorage(seq->storage);
+  return vals;
+}
+
+void release_surf(void* p){
+  surf_struct *surf = (surf_struct*)p;
+  cvClearMemStorage(surf->keypoints->storage);
+  cvClearMemStorage(surf->descriptors->storage);
+  free(surf);
+}
+
 /* 
    Drawing Functions 
 */

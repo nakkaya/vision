@@ -10,6 +10,7 @@
 (defrecord Capture [#^Pointer pointer source])
 (defrecord Contours [#^Pointer pointer])
 (defrecord VideoWriter [#^Pointer pointer])
+(defrecord Surf [#^Pointer pointer])
 
 (defmulti release
   "Release resource."
@@ -397,6 +398,28 @@
   "Applies a generic geometrical transformation to the image."
   [{p :pointer cs :color-space} distortion-map]
   (ipl-image (call :remap Pointer [p distortion-map]) cs))
+
+(defn surf-params
+  ([extended threshold]
+     (surf-params extended threshold 3 4))
+  ([extended threshold nOctaves nOctaveLayers]
+     [extended threshold nOctaves nOctaveLayers]))
+
+(defn extract-surf [{img :pointer cs :color-space} mask [extended threshold nOctaves nOctaveLayers]]
+  {:pre [(= cs :grayscale)]}
+  (Surf. (call :extract_surf Pointer [img mask extended (double threshold) nOctaves nOctaveLayers])))
+
+(defn surf-points [{p :pointer}]
+  (with-pointer [p (call :surf_points IntByReference [p])]
+    (let [count (.getInt p 0)]
+      (partition 3 (seq (drop 1 (.getIntArray p 0 (inc (* 3 count)))))))))
+
+(defn surf-locate [{obj :pointer} {scene :pointer}]
+  (with-pointer [p (call :locatePlanarObject IntByReference [obj scene])]
+    (partition 2 (seq (.getIntArray p 0 8)))))
+
+(defmethod release Surf [s]
+           (call :release_surf [(:pointer s)]))
 
 ;;
 ;; GUI Calls
