@@ -414,7 +414,7 @@
     (let [count (.getInt p 0)]
       (partition 3 (seq (drop 1 (.getIntArray p 0 (inc (* 3 count)))))))))
 
-(defn surf-locate [{obj :pointer} {scene :pointer}]
+(defn surf-locate [{scene :pointer} {obj :pointer}]
   (with-pointer [p (call :locatePlanarObject IntByReference [obj scene])]
     (partition 2 (seq (.getIntArray p 0 8)))))
 
