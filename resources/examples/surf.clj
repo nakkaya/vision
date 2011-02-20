@@ -6,7 +6,7 @@
       params (surf-params 1 500)
       obj-surf (extract-surf obj-img nil params)
       scene-surf (extract-surf scene-img nil params)
-      location (surf-locate obj-surf scene-surf)]
+      location (surf-locate scene-surf obj-surf)]
 
   (doseq [[x y r] (surf-points obj-surf)] 
     (circle obj-img [x y] r java.awt.Color/blue 1))
