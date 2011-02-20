@@ -421,6 +421,11 @@
 (defmethod release Surf [s]
            (call :release_surf [(:pointer s)]))
 
+(defn pyr-down
+  "Downsamples an image."
+  [{p :pointer t :color-space}]
+  (ipl-image (call :pyr_down Pointer [p]) t))
+
 ;;
 ;; GUI Calls
 ;;

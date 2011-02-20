@@ -849,6 +849,15 @@ void release_surf(void* p){
   free(surf);
 }
 
+void* pyr_down(void* i){
+  IplImage* img = (IplImage*)i;
+  IplImage* out = cvCreateImage(cvSize(img->width/2,img->height/2), img->depth, img->nChannels);
+
+  cvPyrDown(img, out, CV_GAUSSIAN_5x5);
+
+  return (void*)out;
+}
+
 /* 
    Drawing Functions 
 */
