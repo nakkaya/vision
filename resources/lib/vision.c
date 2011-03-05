@@ -858,9 +858,137 @@ void* pyr_down(void* i){
   return (void*)out;
 }
 
+typedef struct {
+  int vmin;          //limits for calculating hue
+  int vmax;
+  int smin;
+  IplImage* hsv;     //input image converted to HSV
+  IplImage* hue;     //hue channel of HSV image
+  IplImage* mask;    //image for masking pixels
+  IplImage* prob;    //probability estimates for each pixel
+
+  CvHistogram* hist; //histogram of hue in original image
+
+  CvRect prev_rect;  //location in previous frame
+  CvBox2D curr_box;  //current location estimate
+} camshift_struct;
+
+void update_hue_image (const IplImage* image, camshift_struct* obj) {
+  
+  //convert to HSV color model
+  cvCvtColor(image, obj->hsv, CV_BGR2HSV);
+  
+  //mask out-of-range values
+  cvInRangeS(obj->hsv,                               //source
+             cvScalar(0, obj->smin, MIN(obj->vmin, obj->vmax), 0),  //lower bound
+             cvScalar(180, 256, MAX(obj->vmin, obj->vmax) ,0), //upper bound
+             obj->mask);                             //destination
+  
+  //extract the hue channel, split: src, dest channels
+  cvSplit(obj->hsv, obj->hue, 0, 0, 0 );
+}
+
+camshift_struct* camshift_init (void* i, int x, int y, int w, int h, int vmin, int vmax, int smin) {
+  IplImage* image = (IplImage*)i;
+  CvRect region = cvRect(x, y, w, h);
+  camshift_struct* obj;
+
+  if((obj = malloc(sizeof *obj)) != NULL) {
+    obj->vmin = vmin;
+    obj->vmax = vmax;
+    obj->smin = smin;
+    //create-image: size(w,h), bit depth, channels
+    obj->hsv  = cvCreateImage(cvGetSize(image), 8, 3);
+    obj->mask = cvCreateImage(cvGetSize(image), 8, 1);
+    obj->hue  = cvCreateImage(cvGetSize(image), 8, 1);
+    obj->prob = cvCreateImage(cvGetSize(image), 8, 1);
+
+    int hist_bins = 30;           //number of histogram bins
+    float hist_range[] = {0,180}; //histogram range
+    float* range = hist_range;
+    obj->hist = cvCreateHist(1,             //number of hist dimensions
+                             &hist_bins,    //array of dimension sizes
+                             CV_HIST_ARRAY, //representation format
+                             &range,        //array of ranges for bins
+                             1);            //uniformity flag
+  }
+  
+  //create a new hue image
+  update_hue_image(image, obj);
+
+  float max_val = 0.f;
+  
+  //create a histogram
+  cvSetImageROI(obj->hue, region);
+  cvSetImageROI(obj->mask, region);
+  cvCalcHist(&obj->hue, obj->hist, 0, obj->mask);
+  cvGetMinMaxHistValue(obj->hist, 0, &max_val, 0, 0 );
+  cvConvertScale(obj->hist->bins, obj->hist->bins,
+                 max_val ? 255.0/max_val : 0, 0);
+  cvResetImageROI(obj->hue);
+  cvResetImageROI(obj->mask);
+  
+  //store the previous location
+  obj->prev_rect = region;
+
+  return obj;
+}
+
+float* camshift_track (void* i, void* o) {
+  IplImage* image = (IplImage*)i;
+  camshift_struct* obj = (camshift_struct*)o;
+  CvConnectedComp components;
+
+  update_hue_image(image, obj);
+
+  //create a probability image
+  cvCalcBackProject(&obj->hue, obj->prob, obj->hist);
+  cvAnd(obj->prob, obj->mask, obj->prob, 0);
+
+  cvCamShift(obj->prob, obj->prev_rect,
+             cvTermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 10, 1),
+             &components, &obj->curr_box);
+
+  //update location and angle
+  obj->prev_rect = components.rect;
+  obj->curr_box.angle = -obj->curr_box.angle;
+
+
+  float* coords = malloc(5 * sizeof(float));
+
+  coords[0] = obj->curr_box.center.x;
+  coords[1] = obj->curr_box.center.y;
+  coords[2] = obj->curr_box.size.width;
+  coords[3] = obj->curr_box.size.height;
+  coords[4] = obj->curr_box.angle;
+
+  return coords;
+}
+
+void release_camshift(void* o){
+  camshift_struct* obj = (camshift_struct*)o;
+  cvReleaseImage(&obj->hsv);
+  cvReleaseImage(&obj->hue);
+  cvReleaseImage(&obj->mask);
+  cvReleaseImage(&obj->prob);
+  cvReleaseHist(&obj->hist);
+  free(obj);
+}
+
 /* 
    Drawing Functions 
 */
+
+void ellipse_box(void* i, float x, float y, float w, float h, float a, int r, int g, int b, int thickness){
+  IplImage* img = (IplImage*)i;
+  CvBox2D box;
+  box.center.x = x;
+  box.center.y = y;
+  box.size.width = w;
+  box.size.height = h;
+  box.angle = a;
+  cvEllipseBox(img, box, cvScalar(b,g,r,0), thickness, 8, 0);
+}
 
 void line(void* i, int x1, int y1, int x2, int y2, int r, int g, int b, int thickness){
   IplImage* img = (IplImage*)i;

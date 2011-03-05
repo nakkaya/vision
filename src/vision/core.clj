@@ -11,6 +11,7 @@
 (defrecord Contours [#^Pointer pointer])
 (defrecord VideoWriter [#^Pointer pointer])
 (defrecord Surf [#^Pointer pointer])
+(defrecord CamShift [#^Pointer pointer])
 
 (defmulti release
   "Release resource."
@@ -426,9 +427,28 @@
   [{p :pointer t :color-space}]
   (ipl-image (call :pyr_down Pointer [p]) t))
 
+(defn camshift-init
+  "Create a camshift tracked object from a region in image."
+  [{img :pointer} [x y w h] vmin vmax smin]
+  (CamShift. (call :camshift_init Pointer [img x y w h vmin vmax smin])))
+
+(defn camshift-track
+  "Given an image and tracked object, return box position."
+  [{img :pointer} {str :pointer}]
+  (with-pointer [p (call :camshift_track FloatByReference [img str])]
+    (seq (.getFloatArray p 0 5))))
+
+(defmethod release CamShift [s]
+           (call :release_camshift [(:pointer s)]))
+
 ;;
 ;; GUI Calls
 ;;
+
+(defn ellipse-box
+  "Draws a simple or thick elliptic arc."
+  [{p :pointer} [x y w h a] c thickness]
+  (call :ellipse_box [p x y w h a (.getRed c) (.getGreen c) (.getBlue c) thickness]))
 
 (defn circle
   "Draws simple, thick or filled circle."
