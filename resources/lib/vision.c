@@ -1004,3 +1004,9 @@ void rectangle(void* i, int x1, int y1, int x2, int y2, int r, int g, int b, int
   IplImage* img = (IplImage*)i;
   cvRectangle(img, cvPoint(x1,y1), cvPoint(x2,y2), cvScalar(b,g,r,0), thickness, 8, 0);
 }
+
+void contours(void *i, void *c, int r1, int g1, int b1, int r2, int g2, int b2, int level, int thickness){
+  IplImage* img = (IplImage*)i;
+  CvSeq* contours = (CvSeq*)c;
+  cvDrawContours(img, contours, cvScalar(b1,g1,r1,0), cvScalar(b2,g2,r2,0), level, thickness, 8, cvPoint(0,0));
+}

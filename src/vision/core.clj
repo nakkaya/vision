@@ -471,6 +471,13 @@
   [{p :pointer} [x1 y1] [x2 y2] c thickness]
   (call :rectangle [p (int x1) (int y1) (int x2) (int y2) (.getRed c) (.getGreen c) (.getBlue c) thickness]))
 
+(defn contours
+  "Draws contour outlines in the image"
+  [{ip :pointer} {cp :pointer} c1 c2 level thickness]
+  (call :contours [ip cp
+                   (.getRed c1) (.getGreen c1) (.getBlue c1)
+                   (.getRed c2) (.getGreen c2) (.getBlue c2)
+                   thickness]))
 
 (def *frames* (ref {}))
 
