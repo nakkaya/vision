@@ -441,6 +441,12 @@
 (defmethod release CamShift [s]
            (call :release_camshift [(:pointer s)]))
 
+(defn max-rect
+  "Given an image and tracked object, return box position."
+  [[x1 y1 w1 h1] [x2 y2 w2 h2]]
+  (with-pointer [p (call :max_rect IntByReference [x1 y1 w1 h1 x2 y2 w2 h2])]
+    (seq (.getIntArray p 0 4))))
+
 ;;
 ;; GUI Calls
 ;;

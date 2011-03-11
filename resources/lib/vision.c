@@ -975,6 +975,20 @@ void release_camshift(void* o){
   free(obj);
 }
 
+int* max_rect(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2){
+  CvRect r1 = cvRect(x1, y1, w1, h1);
+  CvRect r2 = cvRect(x2, y2, w2, h2);
+
+  CvRect r = cvMaxRect(&r1, &r2);
+  int* coords = malloc(4 * sizeof(int));
+  coords[0] = r.x;
+  coords[1] = r.y;
+  coords[2] = r.width;
+  coords[3] = r.height;
+
+  return coords;
+}
+
 /* 
    Drawing Functions 
 */
