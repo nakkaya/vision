@@ -989,6 +989,84 @@ int* max_rect(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2){
   return coords;
 }
 
+float* good_features_to_track(void* j, int max_count, double quality, double min_distance, int win_size){
+  IplImage* img = (IplImage*)j;
+
+  IplImage* grey = cvCreateImage( cvGetSize(img), 8, 1 );
+  cvCvtColor( img, grey, CV_BGR2GRAY );
+
+  IplImage* eig = cvCreateImage( cvGetSize(grey), 32, 1 );
+  IplImage* temp = cvCreateImage( cvGetSize(grey), 32, 1 );
+
+  CvPoint2D32f* points = (CvPoint2D32f*)malloc(max_count * sizeof(CvPoint2D32f));
+
+  cvGoodFeaturesToTrack(grey, eig, temp, points, &max_count, quality, min_distance, 0, 3, 0, 0.04);
+  cvFindCornerSubPix(grey, points, max_count, cvSize(win_size,win_size), cvSize(-1,-1), 
+                     cvTermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03));
+  
+  float* ret = (float*)malloc((1 + 2 * max_count) * sizeof(float));
+  ret[0] = max_count;
+  
+  int i,k;
+  for(i = 0, k = 1; i < max_count; i++, k+=2){
+    ret[k] = points[i].x;
+    ret[k+1] = points[i].y;
+  }
+
+  free(points);
+  cvReleaseImage( &eig );
+  cvReleaseImage( &temp );
+
+  return ret;
+}
+
+float* calc_optical_flow_pyr_lk(void* a, void* b, int count, float* points, int win_size, int level){
+  IplImage* imgA = (IplImage*)a;
+  IplImage* imgB = (IplImage*)b;
+
+  IplImage* greyA = cvCreateImage( cvGetSize(imgA), 8, 1 );
+  cvCvtColor( imgA, greyA, CV_BGR2GRAY );
+
+  IplImage* greyB = cvCreateImage( cvGetSize(imgB), 8, 1 );
+  cvCvtColor( imgB, greyB, CV_BGR2GRAY );
+
+  char features_found[count];
+
+  CvSize pyr_sz = cvSize(imgA->width+8, imgB->height/3);
+
+  IplImage* pyrA = cvCreateImage(pyr_sz, IPL_DEPTH_32F, 1);
+  IplImage* pyrB = cvCreateImage(pyr_sz, IPL_DEPTH_32F, 1);
+
+  CvPoint2D32f* cornersB = (CvPoint2D32f*)malloc(count * sizeof(CvPoint2D32f));
+  CvPoint2D32f* cornersA = (CvPoint2D32f*)malloc(count * sizeof(CvPoint2D32f));
+
+  int i,k;
+  for(i = 0, k = 0; i < count * 2; i+=2, k++){
+    cornersA[k].x = points[i];
+    cornersA[k].y = points[i+1];
+  }
+
+  cvCalcOpticalFlowPyrLK(greyA, greyB, pyrA, pyrB, cornersA, cornersB, count,
+                         cvSize( win_size, win_size ), level, features_found, 0,
+                         cvTermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03), 0 );
+
+  float* ret = (float*)malloc((3 * count) * sizeof(float));
+
+  for(i = 0, k = 0; i < count; i++, k+=3){
+    ret[k] = cornersB[i].x;
+    ret[k+1] = cornersB[i].y;
+    ret[k+2] = features_found[i];
+  }
+
+  free(cornersA);
+  free(cornersB);
+  cvReleaseImage(&pyrA);
+  cvReleaseImage(&pyrB);
+  cvReleaseImage(&greyA);
+  cvReleaseImage(&greyB);
+  return ret;
+}
+
 /* 
    Drawing Functions 
 */

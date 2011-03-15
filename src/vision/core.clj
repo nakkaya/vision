@@ -447,6 +447,22 @@
   (with-pointer [p (call :max_rect IntByReference [x1 y1 w1 h1 x2 y2 w2 h2])]
     (seq (.getIntArray p 0 4))))
 
+(defn good-features-to-track
+  "Determines strong corners on an image."
+  [{i :pointer} max-count quality min-distance win-size]
+  (with-pointer [p (call :good_features_to_track FloatByReference
+                         [i max-count (double quality) (double min-distance) win-size])]
+    (let [count (.getFloat p 0)]
+      (partition 2 (seq (drop 1 (.getFloatArray p 0 (inc (* 2 count)))))))))
+
+(defn calc-optical-flow-pyr-lk
+  "Calculates the optical flow for a sparse feature set using the iterative Lucas-Kanade method with pyramids."
+  [{a :pointer} {b :pointer} points win-size level]
+  (with-pointer [p (call :calc_optical_flow_pyr_lk FloatByReference
+                         [a b (count points) (float-array (flatten points)) win-size level])]
+    (let [s (partition 3 (seq (.getFloatArray p 0 (* 3 (count points)))))]
+      (map #(take 2 %) (filter #(not= 0 (last %)) s)))))
+
 ;;
 ;; GUI Calls
 ;;
