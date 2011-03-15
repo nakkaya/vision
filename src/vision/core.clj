@@ -538,3 +538,11 @@
   [f x y]
   (if-let[f (-> @*frames* f :frame)]
     (.setLocation f x y)))
+
+(defn hide-window
+  "Hide frame."
+  [f]
+  (if-let[f (-> @*frames* f :frame)]
+    (doto f
+      (.setAlwaysOnTop false)
+      (.hide))))
