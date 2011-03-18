@@ -934,6 +934,11 @@ camshift_struct* camshift_init (void* i, int x, int y, int w, int h, int vmin, i
   return obj;
 }
 
+void* cam_shift_back_project_image (void* c){
+  camshift_struct* obj = (camshift_struct*)c;
+  return (void*)obj->prob;
+}
+
 float* camshift_track (void* i, void* o) {
   IplImage* image = (IplImage*)i;
   camshift_struct* obj = (camshift_struct*)o;

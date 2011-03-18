@@ -432,6 +432,10 @@
   [{img :pointer} [x y w h] vmin vmax smin]
   (CamShift. (call :camshift_init Pointer [img x y w h vmin vmax smin])))
 
+(defn cam-shift-back-project-image
+  [{c :pointer}]
+  (ipl-image (call :cam_shift_back_project_image Pointer [c]) :binary))
+
 (defn camshift-track
   "Given an image and tracked object, return box position."
   [{img :pointer} {str :pointer}]
