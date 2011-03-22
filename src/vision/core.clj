@@ -2,7 +2,7 @@
   (:use [clojure.contrib.def :only [defmacro-]])
   (:import (com.sun.jna Function Pointer)
            (com.sun.jna.ptr ByReference IntByReference FloatByReference)
-           (java.awt.image BufferedImage ColorModel Raster DataBufferInt)))
+           (java.awt.image BufferedImage DirectColorModel Raster DataBufferInt)))
 
 (defrecord IplImage [#^Pointer pointer
                      #^clojure.lang.Keyword color-space
@@ -69,11 +69,12 @@
 (defn- buffered-image [pxs t]
   (delay
    (let [[width height] (image-size pxs)
-         pxs (pixels pxs t)]
+         pxs (pixels pxs t)
+         masks (int-array [0xFF0000 0xFF00 0xFF])]
      (BufferedImage.
-      (. ColorModel getRGBdefault)
+      (DirectColorModel. 32 (first masks) (second masks) (last masks))
       (Raster/createPackedRaster
-       (DataBufferInt. pxs (* width height)) width height width  (int-array [0xFF0000 0xFF00 0xFF 0xFF000000]) nil)
+       (DataBufferInt. pxs (* width height)) width height width  masks nil)
       false nil))))
 
 (defn- ipl-image [ref cs]
