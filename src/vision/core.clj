@@ -1,7 +1,7 @@
 (ns vision.core
   (:use [clojure.contrib.def :only [defmacro-]])
   (:import (com.sun.jna Function Pointer)
-           (com.sun.jna.ptr ByReference IntByReference FloatByReference)
+           (com.sun.jna.ptr ByReference IntByReference FloatByReference ByteByReference)
            (java.awt.image BufferedImage DirectColorModel Raster DataBufferInt)))
 
 (defrecord IplImage [#^Pointer pointer
@@ -49,33 +49,21 @@
 (defmethod release ByReference [p]
            (call :release_memory [p]))
 
-(defmulti image-size
+(defn image-size
   "Get image width, height."
-  class)
+  [{p :pointer}]
+  (with-pointer [p (call :image_size IntByReference [p])]
+    (seq (.getIntArray p 0 2))))
 
-(defmethod image-size Pointer [p]
-           (with-pointer [p (call :image_size IntByReference [p])]
-             (seq (.getIntArray p 0 2))))
-
-(defmethod image-size IplImage [{p :pointer}]
-           (with-pointer [p (call :image_size IntByReference [p])]
-             (seq (.getIntArray p 0 2))))
-
-(defn- pixels [p t]
-  (with-pointer [ptr (call :pixels IntByReference [p t])]
-    (let [[width height] (image-size p)]
-      (.getIntArray ptr 0 (* width height)))))
-
-(defn- buffered-image [pxs t]
-  (delay
-   (let [[width height] (image-size pxs)
-         pxs (pixels pxs t)
-         masks (int-array [0xFF0000 0xFF00 0xFF])]
-     (BufferedImage.
-      (DirectColorModel. 32 (first masks) (second masks) (last masks))
-      (Raster/createPackedRaster
-       (DataBufferInt. pxs (* width height)) width height width  masks nil)
-      false nil))))
+(defn encode-image [{p :pointer} ext comp]
+  (let [ext (cond (= :png ext) 1
+                  (= :jpg ext) 2
+                  (= :jpeg ext) 2
+                  :default (throw (Exception. "Unknown extension.")))
+        mat (call :encode_image Pointer [p ext comp])
+        size (call :encoded_image_size Integer [mat])]
+    (with-pointer [ptr (call :encoded_image_rerieve ByteByReference [mat])]
+      (.getByteArray ptr 0 size))))
 
 (defn- ipl-image [ref cs]
   (let [type (cond (= cs :bgr) 1
@@ -84,7 +72,10 @@
                    (= cs :rgb) 4
                    (= cs :grayscale) 5
                    :default (throw (Exception. "Unknown Color Space.")))]
-    (IplImage. ref cs (buffered-image ref type))))
+    (IplImage. ref cs (delay
+                       (javax.imageio.ImageIO/read
+                        (java.io.ByteArrayInputStream.
+                         (encode-image {:pointer ref} :jpg 80)))))))
 
 (defn load-image
   "Loads an image from file

@@ -11,72 +11,47 @@ int* image_size(void* m){
   return vals;
 }
 
-// 1 - BGR
-// 2 - BINARY
-// 3 - HSV
-// 4 - RGB
-// 5 - GRAYSCALE
-int* pixels(void* m, int type){
+int encoded_image_size(void* m){
+  CvMat* mat = (CvMat*)m;
+  return mat->cols;
+}
+
+char* encoded_image_rerieve(void* m){
+  CvMat* buf = (CvMat*)m;
+  char* ret = malloc(buf->cols * sizeof(char));
+
+  int col;
+  int k;
+
+  for(col = 0, k= 0; col < buf->cols; col++ , k++) {
+    char* ptr = (char*)(buf->data.ptr + col);
+    ret[k] = ptr[0];
+  }
+
+  cvReleaseMat(&buf);
+  return ret;
+}
+
+void* encode_image(void* m, int ext, int comp){
   IplImage* img = (IplImage*)m;
+  int params[3];
+  char* type;
 
-  int* vals = malloc(img->height * img->width * sizeof(int));
-  int i,j;
-  int index = 0;
+  params[1] = comp;
+  params[2] = 0;
 
-  int release = 0;
-  if(type == 3){
-    IplImage* tmp = cvCreateImage(cvGetSize((IplImage*)img), img->depth, img->nChannels);
-    cvCvtColor(img, tmp, CV_HSV2BGR);
-    img = tmp;
-    release = 1;
-    type = 1;
-  }else if(type == 4){
-    IplImage* tmp = cvCreateImage(cvGetSize((IplImage*)img), img->depth, img->nChannels);
-    cvCvtColor(img, tmp, CV_RGB2BGR);
-    img = tmp;
-    release = 1;
-    type = 1;
-  }else if(type == 5){
-    IplImage* tmp = cvCreateImage(cvGetSize((IplImage*)img), img->depth, 3);
-    cvCvtColor(img, tmp, CV_GRAY2BGR);
-    img = tmp;
-    release = 1;
-    type = 1;
+  switch(ext) {
+  case 1:
+    params[0] = CV_IMWRITE_PNG_COMPRESSION;
+    type = ".png";
+    break;
+  case 2:
+    params[0] = CV_IMWRITE_JPEG_QUALITY;
+    type = ".jpeg";
+    break;
   }
 
-  if(type == 1){
-    for (i = 0; i < img->height; i++){
-      for (j = 0; j < img->width; j++){
-
-        unsigned char red = CV_IMAGE_ELEM(img, uchar, i, (j)*3+2);
-        unsigned char green = CV_IMAGE_ELEM(img, uchar, i, (j)*3+1);
-        unsigned char blue = CV_IMAGE_ELEM(img, uchar, i, (j)*3);
-
-        vals[index++] = 
-          ((255 & 0xFF) << 24) | //alpha
-          (((int)red & 0xFF) << 16) | 
-          (((int)green & 0xFF) << 8) |
-          (((int)blue & 0xFF) << 0);
-      }
-    }
-  }else if(type == 2){
-    for (i = 0; i < img->height; i++){
-      for (j = 0; j < img->width; j++){
-
-        uchar pixel = CV_IMAGE_ELEM(img, uchar, i, j);
-
-        if(pixel == 0)
-          vals[index++] = 0xFF000000;
-        else
-          vals[index++] = 0xFFFFFFFF;
-      }
-    }
-  }
-
-  if(release == 1)
-    cvReleaseImage(&img);
-
-  return vals;
+  return (void*)cvEncodeImage(type, img, params);
 }
 
 void* capture_from_cam(int i){
