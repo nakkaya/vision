@@ -1082,3 +1082,16 @@ void contours(void *i, void *c, int r1, int g1, int b1, int r2, int g2, int b2, 
   CvSeq* contours = (CvSeq*)c;
   cvDrawContours(img, contours, cvScalar(b1,g1,r1,0), cvScalar(b2,g2,r2,0), level, thickness, 8, cvPoint(0,0));
 }
+
+//
+// Begin Daniel Cousineau Patch Work
+//
+
+void* flip_image(void* i, int mode){
+  IplImage* image = (IplImage*)i;
+  IplImage* flipped = cvCreateImage(cvGetSize((IplImage*)image), image->depth, image->nChannels);;
+  
+  cvFlip(image, flipped, mode);  
+
+  return (void*)flipped;
+}
