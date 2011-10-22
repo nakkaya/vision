@@ -542,3 +542,14 @@
     (doto f
       (.setAlwaysOnTop false)
       (.hide))))
+
+
+(defn flip-image 
+  "Flips an image along one or more axis
+   m
+     :x-axis, :y-axis, :both"
+  [{p :pointer t :color-space} m]
+  (ipl-image (call :flip_image Pointer [p (cond (= m :x-axis) 0
+                                                (= m :y-axis) 1
+                                                (= m :both)  -1
+                                                :default      0)]) t))
