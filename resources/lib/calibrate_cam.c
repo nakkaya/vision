@@ -21,13 +21,13 @@ int main(){
 
   board_w  = 9;
   board_h  = 6;
-  
+
   int board_total  = board_w * board_h;		   //Total enclosed corners on the board
   CvSize board_sz = cvSize( board_w, board_h );
 
   capture = cvCreateCameraCapture(cam_index);
   if(!capture){
-    printf("\nCouldn't open the camera\n"); 
+    printf("\nCouldn't open the camera\n");
     return -1;
   }
 
@@ -68,7 +68,7 @@ int main(){
 
     cvCvtColor(image, gray_image, CV_BGR2GRAY);
     //Get Subpixel accuracy on those corners
-    cvFindCornerSubPix(gray_image, corners, corner_count, cvSize(11,11),cvSize(-1,-1), 
+    cvFindCornerSubPix(gray_image, corners, corner_count, cvSize(11,11),cvSize(-1,-1),
                        cvTermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1 ));
 
     cvDrawChessboardCorners(image, board_sz, corners, corner_count, found);
@@ -87,7 +87,7 @@ int main(){
         CV_MAT_ELEM(*object_points,float,i,1) = (float) (j%board_w);
         CV_MAT_ELEM(*object_points,float,i,2) = 0.0f;
       }
-      CV_MAT_ELEM(*point_counts, int,successes,0) = board_total;    
+      CV_MAT_ELEM(*point_counts, int,successes,0) = board_total;
       successes++;
       printf("\r%d successful Snapshots out of %d collected.",successes,n_boards);
     }else{
@@ -100,7 +100,7 @@ int main(){
       break;
 
     printf(" Press Any Key to Capture.\n",successes,n_boards);
-    
+
     while(cvWaitKey(10) == -1){
       cvShowImage( "Raw Video", image);
       image = cvQueryFrame( capture );
@@ -110,7 +110,7 @@ int main(){
   cvDestroyWindow("Snapshot");
 
   printf("\n\n *** Calbrating the camera now...\n");
-	
+
   //Allocate matrices according to successful number of captures
   CvMat* object_points2  = cvCreateMat(successes*board_total,3,CV_32FC1);
   CvMat* image_points2   = cvCreateMat(successes*board_total,2,CV_32FC1);
@@ -124,9 +124,9 @@ int main(){
     CV_MAT_ELEM( *object_points2, float, i, 0) =  CV_MAT_ELEM( *object_points, float, i, 0);
     CV_MAT_ELEM( *object_points2, float, i, 1) =  CV_MAT_ELEM( *object_points, float, i, 1);
     CV_MAT_ELEM( *object_points2, float, i, 2) =  CV_MAT_ELEM( *object_points, float, i, 2);
-  } 
-	
-  for(i=0; i<successes; ++i){ 
+  }
+
+  for(i=0; i<successes; ++i){
     //These are all the same number
     CV_MAT_ELEM( *point_counts2, int, i, 0) =  CV_MAT_ELEM( *point_counts, int, i, 0);
   }
@@ -140,8 +140,15 @@ int main(){
   CV_MAT_ELEM( *intrinsic_matrix, float, 1, 1 ) = 1.0f;
 
   //Calibrate the camera
-  cvCalibrateCamera2(object_points2, image_points2, point_counts2,  cvGetSize( image ), 
-                     intrinsic_matrix, distortion_coeffs, NULL, NULL,0 );
+#if CV_MINOR_VERSION < 4
+  cvCalibrateCamera2(object_points2, image_points2, point_counts2,  cvGetSize( image ),
+                     intrinsic_matrix, distortion_coeffs, NULL, NULL, 0);
+#else
+  cvCalibrateCamera2(object_points2, image_points2, point_counts2,  cvGetSize( image ),
+                     intrinsic_matrix, distortion_coeffs, NULL, NULL, 0,
+                     cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS,30,DBL_EPSILON));
+#endif
+
   //CV_CALIB_FIX_ASPECT_RATIO
 
   //Save values to file
@@ -174,10 +181,10 @@ int main(){
 
     //Handle pause/unpause and ESC
     int c = cvWaitKey(15);
-    if(c == 'p'){ 
+    if(c == 'p'){
       c = 0;
       while(c != 'p' && c != 27)
-        c = cvWaitKey(250);  
+        c = cvWaitKey(250);
     }
 
     if(c == 27)
