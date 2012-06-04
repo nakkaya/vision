@@ -1,5 +1,5 @@
 (ns vision.core
-  (:use [clojure.contrib.def :only [defmacro-]])
+  (:use [clojure.core.incubator :only [defmacro-]])
   (:import (com.sun.jna Function Pointer)
            (com.sun.jna.ptr ByReference IntByReference FloatByReference ByteByReference)
            (java.awt.image BufferedImage DirectColorModel Raster DataBufferInt)))
