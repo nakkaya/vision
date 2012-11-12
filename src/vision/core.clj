@@ -497,7 +497,7 @@
                    (.getRed c2) (.getGreen c2) (.getBlue c2)
                    thickness]))
 
-(def *frames* (ref {}))
+(def ^:dynamic *frames* (ref {}))
 
 (defn- image-panel [f]
   (let [p (proxy [javax.swing.JPanel] []
