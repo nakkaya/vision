@@ -9,3 +9,4 @@ Makefile
 CMakeFiles
 CMakeCache.txt
 resources/lib/calibrate_cam
+/target
