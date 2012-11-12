@@ -2,6 +2,8 @@
 
 OpenCV wrapper for Clojure.
 
+See http://nakkaya.com/vision.html for documentation.
+
 ## Contains
 
  -  copy-region
