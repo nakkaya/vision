@@ -501,10 +501,21 @@
 
 (defn- image-panel [f]
   (let [p (proxy [javax.swing.JPanel] []
-            (paintComponent [g] (.drawImage g (-> @*frames* f :image) 0 0 this))
-            (getPreferredSize [] (java.awt.Dimension.
-                                  (.getWidth (-> @*frames* f :image))
-                                  (.getHeight (-> @*frames* f :image)))))]
+            (paintComponent [g]
+              (let [imgs (-> @*frames* f :image)
+                    offsets (->> imgs
+                                 (reduce (fn [[offsets prev] v]
+                                           [(conj offsets prev) (+ prev (.getWidth v))])
+                                         [[] 0])
+                                 first)]
+                (doseq [[img offset] (partition 2 (interleave imgs offsets))]
+                  (.drawImage g img offset 0 this))))
+            
+            (getPreferredSize []
+              (java.awt.Dimension.
+               (apply + (map #(.getWidth %) (-> @*frames* f :image)))
+               (apply max (map #(.getHeight %) (-> @*frames* f :image))))))]
+    
     (dosync (alter *frames* assoc-in [f :panel] p))
     (add-watch *frames* (str f) (fn [k r o n] (.repaint p)))
     p))
@@ -524,8 +535,8 @@
 
 (defn view
   "Displays the image in a frame."
-  [f {i :buffered-image}]
-  (dosync (alter *frames* assoc-in [f :image] @i))  
+  [f & imgs]
+  (dosync (alter *frames* assoc-in [f :image] (doall (map #(deref (:buffered-image %)) imgs))))
   (when (nil? (-> @*frames* f :frame))
     (image-frame f)))
 
@@ -535,14 +546,15 @@
   (if-let[f (-> @*frames* f :frame)]
     (.setLocation f x y)))
 
-(defn hide-window
+(defn close-window
   "Hide frame."
   [f]
   (if-let[f (-> @*frames* f :frame)]
     (doto f
       (.setAlwaysOnTop false)
-      (.hide))))
-
+      (.setVisible false)
+      (.dispose)))
+  (dosync (alter *frames* dissoc f)))
 
 (defn flip-image 
   "Flips an image along one or more axis
