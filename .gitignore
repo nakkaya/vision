@@ -10,3 +10,4 @@ CMakeFiles
 CMakeCache.txt
 resources/lib/calibrate_cam
 /target
+pom.xml
