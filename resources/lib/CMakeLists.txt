@@ -8,17 +8,28 @@ find_package (OpenCV REQUIRED)
 
 add_executable(calibrate_cam calibrate_cam.c)
 
-IF( OpenCV_VERSION_MINOR GREATER 1 )
-  MESSAGE( "Configuring for 2.2" )
+IF( OpenCV_VERSION_MINOR GREATER 3 )
+  MESSAGE( "Configuring for 2.4" )
+  target_link_libraries(calibrate_cam opencv_core
+                                      opencv_highgui
+                                      opencv_calib3d
+                                      opencv_legacy
+                                      opencv_imgproc)
+ENDIF( OpenCV_VERSION_MINOR GREATER 3 )
+
+IF ( OpenCV_VERSION_MINOR EQUAL 3 )
+  MESSAGE( "Configuring for 2.3" )
   target_link_libraries(calibrate_cam opencv_core
                                       opencv_highgui
                                       opencv_calib3d
                                       opencv_imgproc)
-ELSE ( OpenCV_VERSION_MINOR LESS 2 )
+ENDIF( OpenCV_VERSION_MINOR EQUAL 3 )
+
+IF ( OpenCV_VERSION_MINOR LESS 2 )
   target_link_libraries(calibrate_cam cv
                                       highgui
                                       cxcore)
-ENDIF( OpenCV_VERSION_MINOR GREATER 1 )
+ENDIF( OpenCV_VERSION_MINOR LESS 2 )
 
 add_library(vision SHARED vision.c)
 
@@ -30,8 +41,22 @@ if(CYGWIN)
                      cygvision.dll vision.dll)
 endif(CYGWIN)
 
-IF( OpenCV_VERSION_MINOR GREATER 1 )
-  MESSAGE( "Configuring for 2.2" )
+IF( OpenCV_VERSION_MINOR GREATER 3 )
+  MESSAGE("Configuring for 2.4")
+  ADD_DEFINITIONS(-DFOO -DCV2_2)
+  target_link_libraries(vision opencv_core
+                               opencv_highgui
+                               opencv_video
+                               opencv_calib3d
+                               opencv_features2d
+                               opencv_flann
+                               opencv_imgproc
+                               opencv_legacy
+                               opencv_objdetect)
+ENDIF( OpenCV_VERSION_MINOR GREATER 3 )
+
+IF ( OpenCV_VERSION_MINOR EQUAL 3 )
+  MESSAGE("Configuring for 2.3")
   ADD_DEFINITIONS(-DFOO -DCV2_2)
   target_link_libraries(vision opencv_core
                                opencv_highgui
@@ -41,9 +66,11 @@ IF( OpenCV_VERSION_MINOR GREATER 1 )
                                opencv_flann
                                opencv_imgproc
                                opencv_objdetect)
-ELSE ( OpenCV_VERSION_MINOR LESS 2 )
+ENDIF( OpenCV_VERSION_MINOR EQUAL 3 )
+
+IF ( OpenCV_VERSION_MINOR LESS 2 )
   include_directories (/usr/include/opencv/)
   target_link_libraries(vision cv
                                highgui
                                cxcore)
-ENDIF( OpenCV_VERSION_MINOR GREATER 1 )
+ENDIF( OpenCV_VERSION_MINOR LESS 2 )
