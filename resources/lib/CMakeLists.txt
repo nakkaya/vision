@@ -74,3 +74,12 @@ IF ( OpenCV_VERSION_MINOR LESS 2 )
                                highgui
                                cxcore)
 ENDIF( OpenCV_VERSION_MINOR LESS 2 )
+
+
+find_library(FREENECT_LIBRARY NAMES freenect)
+
+if (FREENECT_LIBRARY)
+     MESSAGE("Configuring for Kinect Support")
+     ADD_DEFINITIONS(-DFREENECT)
+     target_link_libraries(vision freenect_sync)
+endif (FREENECT_LIBRARY)

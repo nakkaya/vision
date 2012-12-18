@@ -3,6 +3,11 @@
 #include "cv.h"
 #include "highgui.h"
 
+#ifdef FREENECT
+#include "libfreenect.h"
+#include "libfreenect_sync.h"
+#endif
+
 int* image_size(void* m){
   IplImage* img = (IplImage*)m;    
   int* vals = malloc(2 * sizeof(int));
@@ -1091,3 +1096,100 @@ void* flip_image(void* i, int mode){
 
   return (void*)flipped;
 }
+
+/* From https://github.com/OpenKinect/libfreenect/blob/master/wrappers/opencv/libfreenect_cv.c */
+
+#ifdef FREENECT
+IplImage *freenect_sync_get_depth_cv(int index)
+{
+	static IplImage *image = 0;
+	static char *data = 0;
+	if (!image) image = cvCreateImageHeader(cvSize(640,480), 16, 1);
+	unsigned int timestamp;
+	if (freenect_sync_get_depth((void**)&data, &timestamp, index, FREENECT_DEPTH_11BIT))
+	    return NULL;
+	cvSetData(image, data, 640*2);
+	return image;
+}
+
+IplImage *freenect_sync_get_rgb_cv(int index)
+{
+	static IplImage *image = 0;
+	static char *data = 0;
+	if (!image) image = cvCreateImageHeader(cvSize(640,480), 8, 3);
+	unsigned int timestamp;
+	if (freenect_sync_get_video((void**)&data, &timestamp, index, FREENECT_VIDEO_RGB))
+	    return NULL;
+	cvSetData(image, data, 640*3);
+	return image;
+}
+
+IplImage *GlViewColor(IplImage *depth)
+{
+	static IplImage *image = 0;
+	if (!image) image = cvCreateImage(cvSize(640,480), 8, 3);
+	unsigned char *depth_mid = (unsigned char*)(image->imageData);
+	int i;
+	for (i = 0; i < 640*480; i++) {
+		int lb = ((short *)depth->imageData)[i] % 256;
+		int ub = ((short *)depth->imageData)[i] / 256;
+		switch (ub) {
+			case 0:
+				depth_mid[3*i+2] = 255;
+				depth_mid[3*i+1] = 255-lb;
+				depth_mid[3*i+0] = 255-lb;
+				break;
+			case 1:
+				depth_mid[3*i+2] = 255;
+				depth_mid[3*i+1] = lb;
+				depth_mid[3*i+0] = 0;
+				break;
+			case 2:
+				depth_mid[3*i+2] = 255-lb;
+				depth_mid[3*i+1] = 255;
+				depth_mid[3*i+0] = 0;
+				break;
+			case 3:
+				depth_mid[3*i+2] = 0;
+				depth_mid[3*i+1] = 255;
+				depth_mid[3*i+0] = lb;
+				break;
+			case 4:
+				depth_mid[3*i+2] = 0;
+				depth_mid[3*i+1] = 255-lb;
+				depth_mid[3*i+0] = 255;
+				break;
+			case 5:
+				depth_mid[3*i+2] = 0;
+				depth_mid[3*i+1] = 0;
+				depth_mid[3*i+0] = 255-lb;
+				break;
+			default:
+				depth_mid[3*i+2] = 0;
+				depth_mid[3*i+1] = 0;
+				depth_mid[3*i+0] = 0;
+				break;
+		}
+	}
+	return image;
+}
+
+void* query_kinect_frame(){
+  IplImage *image = freenect_sync_get_rgb_cv(0);
+  if (!image)
+    return NULL;
+
+  cvCvtColor(image, image, CV_RGB2BGR);
+
+  return (void*)image;
+}
+
+void* query_kinect_depth(){
+  IplImage *depth = freenect_sync_get_depth_cv(0);
+  if (!depth)
+    return NULL;
+
+  IplImage *ret = GlViewColor(depth);
+  return (void*)ret;
+}
+#endif

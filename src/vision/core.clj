@@ -565,3 +565,13 @@
                                                 (= m :y-axis) 1
                                                 (= m :both)  -1
                                                 :default      0)]) t))
+
+(defn query-kinect-frame
+  "Grabs and returns a frame from kinect."
+  []
+  (ipl-image (call :query_kinect_frame Pointer []) :bgr))
+
+(defn query-kinect-depth
+  "Grabs and returns a depth frame from kinect."
+  []
+  (ipl-image (call :query_kinect_depth Pointer []) :bgr))
