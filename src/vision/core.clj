@@ -575,3 +575,10 @@
   "Grabs and returns a depth frame from kinect."
   []
   (ipl-image (call :query_kinect_depth Pointer []) :bgr))
+
+(defn hsv-gimp-to-opencv
+  "Convert HSV values from Gimp to OpenCV"
+  [h s v]
+  [(map-range h 0 360 0 180)
+   (map-range s 0 100 0 180)
+   (map-range v 0 100 0 180)])
