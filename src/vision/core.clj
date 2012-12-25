@@ -576,9 +576,11 @@
   []
   (ipl-image (call :query_kinect_depth Pointer []) :bgr))
 
-(defn hsv-gimp-to-opencv
-  "Convert HSV values from Gimp to OpenCV"
-  [h s v]
-  [(map-range h 0 360 0 180)
-   (map-range s 0 100 0 180)
-   (map-range v 0 100 0 180)])
+(let [map-range (fn [x in-min in-max out-min out-max]
+                  (+ (/ (* (- x in-min) (- out-max out-min)) (- in-max in-min)) out-min))]
+  (defn hsv-gimp-to-opencv
+    "Convert HSV values from Gimp to OpenCV"
+    [h s v]
+    [(map-range h 0 360 0 180)
+     (map-range s 0 100 0 180)
+     (map-range v 0 100 0 180)]))
