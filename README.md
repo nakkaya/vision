@@ -6,53 +6,53 @@ See http://nakkaya.com/vision.html for documentation.
 
 ## Contains
 
- -  copy-region
- -  load-cascade
- -  line
- -  convert-color
- -  remap
+ -  -->
+ -  abs-diff
  -  bounding-rects
  -  canny
- -  write-frame
- -  scale-image
- -  view
+ -  capture-from-cam
+ -  capture-from-file
+ -  circle
+ -  clone-image
+ -  convert-color
+ -  copy-region
  -  dilate
+ -  erode
+ -  extract-surf
+ -  find-contours
+ -  get-capture-property
  -  grab-frame
  -  haar-detect-objects
- -  smooth
- -  query-frame
- -  match-shapes
- -  surf-points
- -  get-capture-property
- -  capture-from-file
- -  hough-lines
- -  save-image
- -  undistort-map
- -  erode
- -  load-image
- -  extract-surf
- -  pyr-down
- -  image-size
- -  clone-image
- -  move-window
- -  threshold
- -  with-contours
- -  abs-diff
- -  find-contours
- -  rotate-image
- -  surf-locate
- -  poly-line
- -  match-template
- -  rectangle
- -  in-range-s
- -  circle
- -  release
- -  set-capture-property
- -  surf-params
- -  -->
- -  capture-from-cam
  -  hough-circles
+ -  hough-lines
+ -  image-size
+ -  in-range-s
+ -  line
+ -  load-cascade
+ -  load-image
+ -  match-shapes
+ -  match-template
+ -  move-window
+ -  poly-line
+ -  pyr-down
+ -  query-frame
+ -  rectangle
+ -  release
+ -  remap
+ -  rotate-image
+ -  save-image
+ -  scale-image
+ -  set-capture-property
+ -  smooth
+ -  surf-locate
+ -  surf-params
+ -  surf-points
+ -  threshold
+ -  undistort-map
  -  video-writer
+ -  view
+ -  with-contours
+ -  write-frame
 
 ## License
 
